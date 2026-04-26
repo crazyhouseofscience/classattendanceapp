@@ -334,11 +334,11 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-10rem)] relative">
+    <div className="flex flex-col h-[calc(100vh-8.5rem)] relative">
       {/* Fixed Sticky Header */}
       <div className="sticky top-0 z-10 bg-slate-50 border-b pb-1 mb-1">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-3 mb-2">
-          <h2 className="text-2xl font-black tracking-tight text-slate-800 leading-none">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-2">
+          <h2 className="text-xl font-black tracking-tight text-slate-800 leading-none">
              {isReady ? activePeriodName : 'Scanner Mode'}
           </h2>
           
@@ -392,31 +392,31 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
         <Card className="bg-white border shadow-sm transition-colors border-indigo-100 overflow-hidden">
           <CardContent className="p-0">
-            <form onSubmit={handleScan} className="flex h-12 items-stretch">
+            <form onSubmit={handleScan} className="flex h-10 items-stretch">
               <input 
                 ref={inputRef}
                 type="text" 
-                className="flex-1 text-xl px-4 focus:outline-none font-mono tracking-widest transition-all bg-transparent min-w-0"
+                className="flex-1 text-lg px-3 focus:outline-none font-mono tracking-widest transition-all bg-transparent min-w-0"
                 autoFocus
                 value={barcode}
                 onChange={e => setBarcode(e.target.value)}
                 placeholder="PROMPT TO SCAN..."
               />
-              <div className="hidden lg:flex bg-slate-50 px-3 items-center border-l gap-2">
+              <div className="hidden lg:flex bg-slate-50 px-2 items-center border-l gap-1">
                 {['Bathroom', 'Nurse', 'Office', 'Guidance'].map(reason => (
                    <Button 
                       key={reason}
-                      type="button"
+                      type="button" 
                       variant="ghost" 
                       size="sm" 
                       onClick={() => setScanReason(scanReason === reason ? null : reason)}
-                      className={`h-9 px-3 text-[10px] font-bold uppercase transition-all ${scanReason === reason ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-inner' : 'text-slate-400 hover:bg-slate-200'}`}
+                      className={`h-8 px-2 text-[10px] font-bold uppercase transition-all ${scanReason === reason ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-inner' : 'text-slate-400 hover:bg-slate-200'}`}
                    >
                       {reason}
                    </Button>
                 ))}
               </div>
-              <button type="submit" className="px-8 bg-indigo-600 text-white font-black text-xs uppercase hover:bg-indigo-700 transition-colors whitespace-nowrap">
+              <button type="submit" className="px-6 bg-indigo-600 text-white font-black text-xs uppercase hover:bg-indigo-700 transition-colors whitespace-nowrap">
                  SCAN {scanReason && <span className="ml-1 opacity-80 text-xs font-normal">({scanReason})</span>}
               </button>
             </form>
@@ -516,10 +516,10 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
              <div className="flex-1 overflow-y-auto">
                <Table>
                  <TableHeader className="bg-slate-50/90 sticky top-0 z-20 backdrop-blur-sm shadow-sm">
-                   <TableRow className="h-10 border-b-2 bg-slate-50">
-                     <TableHead className="w-[300px] text-sm font-black uppercase py-0 px-1.5 h-10">Student Name</TableHead>
-                     <TableHead className="text-sm font-black uppercase py-0 px-1.5 h-10 text-left text-slate-500">Quick Actions</TableHead>
-                     <TableHead className="w-[140px] text-sm font-black uppercase py-0 px-1.5 h-10 text-center text-slate-500">Status</TableHead>
+                   <TableRow className="h-8 border-b-2 bg-slate-50">
+                     <TableHead className="w-[300px] text-xs font-black uppercase py-0 px-2 h-8">Student Name</TableHead>
+                     <TableHead className="text-xs font-black uppercase py-0 px-2 h-8 text-left text-slate-500">Quick Actions</TableHead>
+                     <TableHead className="w-[140px] text-xs font-black uppercase py-0 px-2 h-8 text-center text-slate-500">Status</TableHead>
                    </TableRow>
                  </TableHeader>
                  <TableBody>
@@ -536,11 +536,11 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                         return (
                              <TableRow 
                                key={student.id} 
-                               className={`h-10 border-b group transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'} ${statusInfo.status === 'Absent' ? '' : 'bg-green-50/20'}`}
+                               className={`h-9 border-b group transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'} ${statusInfo.status === 'Absent' ? '' : 'bg-green-50/20'}`}
                             >
-                               <TableCell className="w-[300px] py-0 px-1.5">
+                               <TableCell className="w-[300px] py-0 px-2">
                                   <div className="flex items-center gap-2 overflow-hidden">
-                                     <span className="text-xl font-bold text-slate-700 leading-none truncate">{student.firstName} {student.lastName}</span>
+                                     <span className="text-sm font-bold text-slate-700 leading-none truncate">{student.firstName} {student.lastName}</span>
                                      <span className="text-xs text-slate-300 font-mono tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity leading-none uppercase shrink-0">{student.id}</span>
                                      {moveStatus?.out && (
                                         <span className="inline-flex items-center gap-1 font-black text-[10px] text-amber-600 uppercase bg-amber-50 px-2 rounded ring-1 ring-amber-100 leading-none py-1.5">

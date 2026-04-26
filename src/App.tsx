@@ -295,8 +295,8 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-3">
-        <Tabs defaultValue="scanner" className="space-y-3">
+      <main className="max-w-7xl mx-auto px-4 py-2">
+        <Tabs defaultValue="scanner" className="space-y-2">
           <TabsList className="bg-slate-100 border p-0.5 h-8 w-fit">
             <TabsTrigger value="scanner" className="h-7 px-4 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Scanner</TabsTrigger>
             <TabsTrigger value="students" className="h-7 px-4 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Students</TabsTrigger>
@@ -304,19 +304,19 @@ export default function App() {
             <TabsTrigger value="schedules" className="h-7 px-4 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Schedules</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="scanner" className="pt-4">
+          <TabsContent value="scanner" className="pt-2">
             <ScannerTab activeScheduleId={activeScheduleId} activePeriodName={activePeriodName} activeSchedule={activeSchedule} />
           </TabsContent>
           
-          <TabsContent value="students" className="pt-4">
+          <TabsContent value="students" className="pt-2">
             <StudentsTab activePeriodName={activePeriodName} activeSchedule={activeSchedule} />
           </TabsContent>
 
-          <TabsContent value="reports" className="pt-4">
+          <TabsContent value="reports" className="pt-2">
             <ReportsTab activePeriodName={activePeriodName} />
           </TabsContent>
 
-          <TabsContent value="schedules" className="pt-4">
+          <TabsContent value="schedules" className="pt-2">
             <SchedulesTab />
           </TabsContent>
         </Tabs>
