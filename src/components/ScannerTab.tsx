@@ -334,7 +334,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8.5rem)] relative">
+    <div className="flex flex-col h-[calc(100vh-7rem)] relative">
       {/* Fixed Sticky Header */}
       <div className="sticky top-0 z-10 bg-slate-50 border-b pb-1 mb-1">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-2">
@@ -392,11 +392,11 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
         <Card className="bg-white border shadow-sm transition-colors border-indigo-100 overflow-hidden">
           <CardContent className="p-0">
-            <form onSubmit={handleScan} className="flex h-10 items-stretch">
+            <form onSubmit={handleScan} className="flex h-8 items-stretch">
               <input 
                 ref={inputRef}
                 type="text" 
-                className="flex-1 text-lg px-3 focus:outline-none font-mono tracking-widest transition-all bg-transparent min-w-0"
+                className="flex-1 text-base px-3 focus:outline-none font-mono tracking-widest transition-all bg-transparent min-w-0"
                 autoFocus
                 value={barcode}
                 onChange={e => setBarcode(e.target.value)}
@@ -410,13 +410,13 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                       variant="ghost" 
                       size="sm" 
                       onClick={() => setScanReason(scanReason === reason ? null : reason)}
-                      className={`h-8 px-2 text-[10px] font-bold uppercase transition-all ${scanReason === reason ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-inner' : 'text-slate-400 hover:bg-slate-200'}`}
+                      className={`h-6 px-2 text-[10px] font-bold uppercase transition-all ${scanReason === reason ? 'bg-indigo-600 text-white hover:bg-indigo-700 shadow-inner' : 'text-slate-400 hover:bg-slate-200'}`}
                    >
                       {reason}
                    </Button>
                 ))}
               </div>
-              <button type="submit" className="px-6 bg-indigo-600 text-white font-black text-xs uppercase hover:bg-indigo-700 transition-colors whitespace-nowrap">
+              <button type="submit" className="px-6 bg-indigo-600 text-white font-black text-[10px] uppercase hover:bg-indigo-700 transition-colors whitespace-nowrap">
                  SCAN {scanReason && <span className="ml-1 opacity-80 text-xs font-normal">({scanReason})</span>}
               </button>
             </form>
@@ -516,10 +516,10 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
              <div className="flex-1 overflow-y-auto">
                <Table>
                  <TableHeader className="bg-slate-50/90 sticky top-0 z-20 backdrop-blur-sm shadow-sm">
-                   <TableRow className="h-8 border-b-2 bg-slate-50">
-                     <TableHead className="w-[300px] text-xs font-black uppercase py-0 px-2 h-8">Student Name</TableHead>
-                     <TableHead className="text-xs font-black uppercase py-0 px-2 h-8 text-left text-slate-500">Quick Actions</TableHead>
-                     <TableHead className="w-[140px] text-xs font-black uppercase py-0 px-2 h-8 text-center text-slate-500">Status</TableHead>
+                   <TableRow className="h-6 border-b-2 bg-slate-50">
+                     <TableHead className="w-[300px] text-[10px] font-black uppercase py-0 px-2 h-6">Student Name</TableHead>
+                     <TableHead className="text-[10px] font-black uppercase py-0 px-2 h-6 text-left text-slate-500">Quick Actions</TableHead>
+                     <TableHead className="w-[140px] text-[10px] font-black uppercase py-0 px-2 h-6 text-center text-slate-500">Status</TableHead>
                    </TableRow>
                  </TableHeader>
                  <TableBody>
@@ -536,12 +536,12 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                         return (
                              <TableRow 
                                key={student.id} 
-                               className={`h-9 border-b group transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'} ${statusInfo.status === 'Absent' ? '' : 'bg-green-50/20'}`}
+                               className={`h-7 border-b group transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'} ${statusInfo.status === 'Absent' ? '' : 'bg-green-50/20'}`}
                             >
                                <TableCell className="w-[300px] py-0 px-2">
                                   <div className="flex items-center gap-2 overflow-hidden">
-                                     <span className="text-sm font-bold text-slate-700 leading-none truncate">{student.firstName} {student.lastName}</span>
-                                     <span className="text-xs text-slate-300 font-mono tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity leading-none uppercase shrink-0">{student.id}</span>
+                                     <span className="text-xs font-bold text-slate-700 leading-none truncate">{student.firstName} {student.lastName}</span>
+                                     <span className="text-[10px] text-slate-300 font-mono tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity leading-none uppercase shrink-0">{student.id}</span>
                                      {moveStatus?.out && (
                                         <span className="inline-flex items-center gap-1 font-black text-[10px] text-amber-600 uppercase bg-amber-50 px-2 rounded ring-1 ring-amber-100 leading-none py-1.5">
                                            {moveStatus.reason}
@@ -553,8 +553,8 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                   <div className="flex justify-start items-center gap-2">
                                     {statusInfo.status === 'Absent' ? (
                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                                          <Button variant="outline" size="sm" onClick={() => manualMark(student, 'Present')} className="h-8 text-sm font-bold bg-green-50 text-green-700 px-3 border-green-200 uppercase">IN</Button>
-                                          <Button variant="outline" size="sm" onClick={() => manualMark(student, 'Late')} className="h-8 text-sm font-bold bg-amber-50 text-amber-700 px-3 border-amber-200 uppercase">LATE</Button>
+                                          <Button variant="outline" size="sm" onClick={() => manualMark(student, 'Present')} className="h-6 text-xs font-bold bg-green-50 text-green-700 px-3 border-green-200 uppercase">IN</Button>
+                                          <Button variant="outline" size="sm" onClick={() => manualMark(student, 'Late')} className="h-6 text-xs font-bold bg-amber-50 text-amber-700 px-3 border-amber-200 uppercase">LATE</Button>
                                        </div>
                                     ) : (
                                        <div className="flex items-center gap-2.5">
@@ -564,7 +564,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                                    variant="secondary" 
                                                    size="sm" 
                                                    onClick={() => logMovement(student, null)}
-                                                   className="h-8 px-4 text-sm bg-amber-500 text-white font-black uppercase hover:bg-amber-600"
+                                                   className="h-6 px-4 text-[10px] bg-amber-500 text-white font-black uppercase hover:bg-amber-600"
                                                 >
                                                    IN ROOM
                                                 </Button>
@@ -577,7 +577,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                                          variant="ghost" 
                                                          size="sm" 
                                                          onClick={() => logMovement(student, labelMap[char])}
-                                                         className="h-8 w-8 p-0 text-xl font-bold text-slate-300 hover:text-indigo-600 hover:bg-indigo-50"
+                                                         className="h-6 w-6 p-0 text-sm font-bold text-slate-300 hover:text-indigo-600 hover:bg-indigo-50"
                                                          title={labelMap[char]}
                                                       >
                                                          {char}
@@ -586,10 +586,10 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                                 })
                                              )}
                                           </div>
-                                          <Button variant="ghost" size="sm" onClick={() => toggleExcused(student)} className={`h-8 px-4 text-sm font-bold uppercase transition-colors ${statusInfo.excused ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-slate-600'}`}>
+                                          <Button variant="ghost" size="sm" onClick={() => toggleExcused(student)} className={`h-6 px-4 text-xs font-bold uppercase transition-colors ${statusInfo.excused ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-slate-600'}`}>
                                              {statusInfo.excused ? 'EXC' : 'PASS'}
                                           </Button>
-                                          <Button variant="ghost" size="sm" onClick={() => manualMark(student, 'Absent')} className="h-8 w-8 p-0 text-base text-red-200 hover:text-red-500 hover:bg-red-50 transition-colors uppercase font-black">X</Button>
+                                          <Button variant="ghost" size="sm" onClick={() => manualMark(student, 'Absent')} className="h-6 w-6 p-0 text-sm text-red-200 hover:text-red-500 hover:bg-red-50 transition-colors uppercase font-black">X</Button>
                                        </div>
                                     )}
                                   </div>

@@ -217,9 +217,9 @@ export default function App() {
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-2">
       {/* Top Banner - Slim version */}
       <header className="bg-white border-b sticky top-0 z-20 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 h-12 flex items-center justify-between">
+        <div className="max-w-7xl mx-auto px-2 h-10 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-lg font-black tracking-tighter text-indigo-600">K-12 Scanner</h1>
+            <h1 className="text-base font-black tracking-tighter text-indigo-600">K-12 Scanner</h1>
             {isOffline && (
               <span className="flex items-center gap-1 text-[10px] bg-amber-100 text-amber-800 px-2 py-0.5 rounded-full font-bold">
                 <WifiOff className="w-3 h-3" /> Offline
@@ -295,35 +295,35 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-2">
-        <Tabs defaultValue="scanner" className="space-y-2">
-          <TabsList className="bg-slate-100 border p-0.5 h-8 w-fit">
-            <TabsTrigger value="scanner" className="h-7 px-4 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Scanner</TabsTrigger>
-            <TabsTrigger value="students" className="h-7 px-4 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Students</TabsTrigger>
-            <TabsTrigger value="reports" className="h-7 px-4 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Reports</TabsTrigger>
-            <TabsTrigger value="schedules" className="h-7 px-4 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Schedules</TabsTrigger>
+      <main className="max-w-7xl mx-auto px-2 py-1">
+        <Tabs defaultValue="scanner" className="space-y-1">
+          <TabsList className="bg-slate-100 border p-0.5 h-7 w-fit">
+            <TabsTrigger value="scanner" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Scanner</TabsTrigger>
+            <TabsTrigger value="students" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Students</TabsTrigger>
+            <TabsTrigger value="reports" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Reports</TabsTrigger>
+            <TabsTrigger value="schedules" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Schedules</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="scanner" className="pt-2">
+          <TabsContent value="scanner" className="pt-1">
             <ScannerTab activeScheduleId={activeScheduleId} activePeriodName={activePeriodName} activeSchedule={activeSchedule} />
           </TabsContent>
           
-          <TabsContent value="students" className="pt-2">
+          <TabsContent value="students" className="pt-1">
             <StudentsTab activePeriodName={activePeriodName} activeSchedule={activeSchedule} />
           </TabsContent>
 
-          <TabsContent value="reports" className="pt-2">
+          <TabsContent value="reports" className="pt-1">
             <ReportsTab activePeriodName={activePeriodName} />
           </TabsContent>
 
-          <TabsContent value="schedules" className="pt-2">
+          <TabsContent value="schedules" className="pt-1">
             <SchedulesTab />
           </TabsContent>
         </Tabs>
       </main>
       
       {/* Privacy Footer */}
-      <footer className="max-w-7xl mx-auto px-4 py-4 flex flex-col items-center gap-2 border-t mt-8">
+      <footer className="max-w-7xl mx-auto px-4 py-2 flex flex-col items-center gap-1 border-t mt-4">
          <div className="flex items-center gap-2 text-slate-400">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
             <p className="text-[10px] font-bold uppercase tracking-wider">Privacy First Data Storage</p>

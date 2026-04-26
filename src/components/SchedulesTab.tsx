@@ -90,20 +90,22 @@ export function SchedulesTab() {
     
     // Define base times for 9 periods
     const times = {
-      p1: { start: '08:00', end: '08:40' },
-      p2: { start: '08:45', end: '09:25' },
-      p3: { start: '09:30', end: '10:10' },
-      p4: { start: '10:15', end: '10:55' },
-      p5: { start: '11:00', end: '11:40' },
-      p6: { start: '11:45', end: '12:25' },
-      p7: { start: '12:30', end: '13:10' },
-      p8: { start: '13:15', end: '13:55' },
-      p9: { start: '14:00', end: '14:40' }
+      p1: { start: '08:00', end: '08:42' },
+      p2: { start: '08:46', end: '09:28' },
+      hr: { start: '09:28', end: '09:39' },
+      p3: { start: '09:43', end: '10:25' },
+      p4: { start: '10:29', end: '11:11' },
+      p5: { start: '11:15', end: '11:57' },
+      p6: { start: '12:01', end: '12:43' },
+      p7: { start: '12:47', end: '13:29' },
+      p8: { start: '13:33', end: '14:15' },
+      p9: { start: '14:19', end: '15:01' }
     };
 
     const monPeriods = [
       { name: 'Period 1', startTime: times.p1.start, endTime: times.p1.end },
       { name: 'Period 2 (CP Chem)', startTime: times.p2.start, endTime: times.p2.end },
+      { name: 'HR', startTime: times.hr.start, endTime: times.hr.end },
       { name: 'Period 3 (Honors Chem)', startTime: times.p3.start, endTime: times.p3.end },
       { name: 'Period 4', startTime: times.p4.start, endTime: times.p4.end },
       { name: 'Period 5 (Honors Chem)', startTime: times.p5.start, endTime: times.p5.end },
@@ -115,6 +117,7 @@ export function SchedulesTab() {
     const tuePeriods = [
       { name: 'Period 1', startTime: times.p1.start, endTime: times.p1.end },
       { name: 'Period 2 (CP Chem)', startTime: times.p2.start, endTime: times.p2.end },
+      { name: 'HR', startTime: times.hr.start, endTime: times.hr.end },
       { name: 'Period 3 (Honors Chem)', startTime: times.p3.start, endTime: times.p3.end },
       { name: 'Period 4', startTime: times.p4.start, endTime: times.p4.end },
       { name: 'Period 5 (Honors Chem)', startTime: times.p5.start, endTime: times.p5.end },
@@ -126,6 +129,7 @@ export function SchedulesTab() {
 
     const wedPeriods = [
       { name: 'Period 1/2 Lab (CP Chem)', startTime: times.p1.start, endTime: times.p2.end },
+      { name: 'HR', startTime: times.hr.start, endTime: times.hr.end },
       { name: 'Period 3 (Honors Chem)', startTime: times.p3.start, endTime: times.p3.end },
       { name: 'Period 4', startTime: times.p4.start, endTime: times.p4.end },
       { name: 'Period 5 (Honors Chem)', startTime: times.p5.start, endTime: times.p5.end },
@@ -138,6 +142,7 @@ export function SchedulesTab() {
     const thuPeriods = [
       { name: 'Period 1', startTime: times.p1.start, endTime: times.p1.end },
       { name: 'Period 2 (CP Chem)', startTime: times.p2.start, endTime: times.p2.end },
+      { name: 'HR', startTime: times.hr.start, endTime: times.hr.end },
       { name: 'Period 3/4 Lab (Honors Chem)', startTime: times.p3.start, endTime: times.p4.end },
       { name: 'Period 5 (Honors Chem)', startTime: times.p5.start, endTime: times.p5.end },
       { name: 'Period 6', startTime: times.p6.start, endTime: times.p6.end },
@@ -149,6 +154,7 @@ export function SchedulesTab() {
     const friPeriods = [
       { name: 'Period 1', startTime: times.p1.start, endTime: times.p1.end },
       { name: 'Period 2 (CP Chem)', startTime: times.p2.start, endTime: times.p2.end },
+      { name: 'HR', startTime: times.hr.start, endTime: times.hr.end },
       { name: 'Period 3 (Honors Chem)', startTime: times.p3.start, endTime: times.p3.end },
       { name: 'Period 4/5 Lab (Honors Chem)', startTime: times.p4.start, endTime: times.p5.end },
       { name: 'Period 6', startTime: times.p6.start, endTime: times.p6.end },

@@ -88,15 +88,22 @@ export function getDB() {
 export async function initDefaultData() {
   const db = await getDB();
   const defaultSchedule = await db.get('schedules', 'default');
-  if (!defaultSchedule) {
+  
+  if (!defaultSchedule || defaultSchedule.periods[0].endTime === '08:40' || defaultSchedule.periods[0].endTime === '08:45') {
     await db.put('schedules', {
       id: 'default',
       name: 'Regular Day',
       periods: [
-        { name: 'Period 1', startTime: '08:00', endTime: '08:45' },
-        { name: 'Period 2', startTime: '08:50', endTime: '09:35' },
-        { name: 'Period 3', startTime: '09:40', endTime: '10:25' },
-        { name: 'Period 4', startTime: '10:30', endTime: '11:15' },
+        { name: 'Period 1', startTime: '08:00', endTime: '08:42' },
+        { name: 'Period 2', startTime: '08:46', endTime: '09:28' },
+        { name: 'HR', startTime: '09:28', endTime: '09:39' },
+        { name: 'Period 3', startTime: '09:43', endTime: '10:25' },
+        { name: 'Period 4', startTime: '10:29', endTime: '11:11' },
+        { name: 'Period 5', startTime: '11:15', endTime: '11:57' },
+        { name: 'Period 6', startTime: '12:01', endTime: '12:43' },
+        { name: 'Period 7', startTime: '12:47', endTime: '13:29' },
+        { name: 'Period 8', startTime: '13:33', endTime: '14:15' },
+        { name: 'Period 9', startTime: '14:19', endTime: '15:01' },
       ],
     });
   }
