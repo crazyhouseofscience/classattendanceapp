@@ -1,0 +1,6 @@
+{
+  "name": "K-12 Barcode Scanner",
+  "description": "Offline-first barcode scanner and Student Information Management System (SIMS) with Google Drive backup. Organized by class periods.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
