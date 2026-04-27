@@ -72,7 +72,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
      return { status: 'OnTime', text: 'On Time', time: scan.timestamp, excused: !!scan.isExcused };
   };
 
-  const [sortBy, setSortBy] = useState<'name' | 'status'>('name');
+  const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status'>('lastName');
   const [elapsedTime, setElapsedTime] = useState<string>('00:00');
   const [manualStartTimeInternal, setManualStartTimeInternal] = useState<string | null>(null);
 
@@ -120,9 +120,14 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
       const statusA = getStudentStatus(a).status;
       const statusB = getStudentStatus(b).status;
       if (statusA !== statusB) return statusA.localeCompare(statusB);
+      return a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName);
     }
-    // Default or secondary sort by first name
-    return a.firstName.localeCompare(b.firstName);
+    
+    if (sortBy === 'firstName') {
+       return a.firstName.localeCompare(b.firstName) || a.lastName.localeCompare(b.lastName);
+    }
+
+    return a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName);
   });
 
   const isStudentInPeriod = (student: Student, periodName: string) => {
@@ -511,12 +516,20 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
               <div className="flex items-center gap-1.5 p-0.5 bg-slate-100 rounded-md">
                  <span className="text-[8px] font-black text-slate-400 uppercase ml-2 mr-1">Sort Mode:</span>
                  <Button 
-                    variant={sortBy === 'name' ? 'secondary' : 'ghost'} 
+                    variant={sortBy === 'firstName' ? 'secondary' : 'ghost'} 
                     size="sm" 
-                    onClick={() => setSortBy('name')}
-                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'name' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                    onClick={() => setSortBy('firstName')}
+                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'firstName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
                  >
-                    Name
+                    First Name
+                 </Button>
+                 <Button 
+                    variant={sortBy === 'lastName' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setSortBy('lastName')}
+                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'lastName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                 >
+                    Last Name
                  </Button>
                  <Button 
                     variant={sortBy === 'status' ? 'secondary' : 'ghost'} 
