@@ -313,7 +313,11 @@ export default function App() {
           </TabsContent>
 
           <TabsContent value="reports" className="pt-1">
-            <ReportsTab activePeriodName={activePeriodName} />
+            <ReportsTab 
+               activePeriodName={activePeriodName} 
+               activeScheduleId={activeScheduleId} 
+               activeSchedule={activeSchedule} 
+               />
           </TabsContent>
 
           <TabsContent value="schedules" className="pt-1">

@@ -21,8 +21,20 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const [lastScan, setLastScan] = useState<{ student: Student | null, barcode?: string, status: 'success' | 'unknown_barcode' | 'not_in_period', timestamp: number } | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [scans, setScans] = useState<(ScanEvent & { studentInfo?: Student })[]>([]);
-  const [gracePeriod, setGracePeriod] = useState(5);
+  const [gracePeriodInternal, setGracePeriodInternal] = useState(5);
   const [scanReason, setScanReason] = useState<string | null>(null);
+
+  useEffect(() => {
+    const saved = localStorage.getItem('grace_period');
+    if (saved) setGracePeriodInternal(parseInt(saved));
+  }, []);
+
+  const setGracePeriod = (val: number) => {
+    localStorage.setItem('grace_period', val.toString());
+    setGracePeriodInternal(val);
+  };
+  
+  const gracePeriod = gracePeriodInternal;
 
   const [view, setView] = useState<'attendance' | 'movement'>('attendance');
 
@@ -62,11 +74,22 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
   const [sortBy, setSortBy] = useState<'name' | 'status'>('name');
   const [elapsedTime, setElapsedTime] = useState<string>('00:00');
-  const [manualStartTime, setManualStartTime] = useState<string | null>(null);
+  const [manualStartTimeInternal, setManualStartTimeInternal] = useState<string | null>(null);
+
+  const getOverrideKey = () => `override_${format(new Date(), 'yyyy-MM-dd')}_${activeScheduleId}_${activePeriodName}`;
+
+  const setManualStartTime = (time: string | null) => {
+    const key = getOverrideKey();
+    if (time) localStorage.setItem(key, time);
+    else localStorage.removeItem(key);
+    setManualStartTimeInternal(time);
+  };
+
+  const manualStartTime = manualStartTimeInternal;
 
   useEffect(() => {
-    // Reset manual start time when period changes
-    setManualStartTime(null);
+    const key = getOverrideKey();
+    setManualStartTimeInternal(localStorage.getItem(key));
   }, [activePeriodName, activeScheduleId]);
 
   useEffect(() => {
@@ -517,15 +540,16 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                <Table>
                  <TableHeader className="bg-slate-50/90 sticky top-0 z-20 backdrop-blur-sm shadow-sm">
                    <TableRow className="h-6 border-b-2 bg-slate-50">
-                     <TableHead className="w-[300px] text-[10px] font-black uppercase py-0 px-2 h-6">Student Name</TableHead>
-                     <TableHead className="text-[10px] font-black uppercase py-0 px-2 h-6 text-left text-slate-500">Quick Actions</TableHead>
+                     <TableHead className="w-[180px] text-[10px] font-black uppercase py-0 px-2 h-6">Student Name</TableHead>
+                     <TableHead className="w-[280px] text-[10px] font-black uppercase py-0 px-2 h-6 text-left text-slate-500">Quick Actions</TableHead>
                      <TableHead className="w-[140px] text-[10px] font-black uppercase py-0 px-2 h-6 text-center text-slate-500">Status</TableHead>
+                     <TableHead className="w-full"></TableHead>
                    </TableRow>
                  </TableHeader>
                  <TableBody>
                    {sortedStudents.length === 0 ? (
                       <TableRow>
-                         <TableCell colSpan={3} className="text-center text-slate-400 py-12 italic">
+                         <TableCell colSpan={4} className="text-center text-slate-400 py-12 italic">
                              No students found in the roster.
                          </TableCell>
                       </TableRow>
@@ -533,14 +557,28 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                       sortedStudents.map((student, idx) => {
                         const statusInfo = getStudentStatus(student);
                         const moveStatus = getMovementStatus(student.id);
+                        
+                        let rowColor = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60';
+                        let nameColor = 'text-slate-700';
+                        if (statusInfo.status === 'Absent') {
+                          rowColor = 'bg-red-50/40';
+                          nameColor = 'text-red-700';
+                        } else if (statusInfo.status === 'Present') {
+                          rowColor = 'bg-green-50/20';
+                          nameColor = 'text-green-800';
+                        } else if (statusInfo.status === 'Late') {
+                          rowColor = 'bg-amber-50/30';
+                          nameColor = 'text-amber-800';
+                        }
+
                         return (
                              <TableRow 
                                key={student.id} 
-                               className={`h-7 border-b group transition-colors ${idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60'} ${statusInfo.status === 'Absent' ? '' : 'bg-green-50/20'}`}
+                               className={`h-7 border-b group transition-colors ${rowColor}`}
                             >
-                               <TableCell className="w-[300px] py-0 px-2">
+                               <TableCell className="w-[180px] py-0 px-2">
                                   <div className="flex items-center gap-2 overflow-hidden">
-                                     <span className="text-xs font-bold text-slate-700 leading-none truncate">{student.firstName} {student.lastName}</span>
+                                     <span className={`text-xs font-bold leading-none truncate ${nameColor}`}>{student.firstName} {student.lastName}</span>
                                      <span className="text-[10px] text-slate-300 font-mono tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity leading-none uppercase shrink-0">{student.id}</span>
                                      {moveStatus?.out && (
                                         <span className="inline-flex items-center gap-1 font-black text-[10px] text-amber-600 uppercase bg-amber-50 px-2 rounded ring-1 ring-amber-100 leading-none py-1.5">
@@ -549,7 +587,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                      )}
                                   </div>
                                </TableCell>
-                               <TableCell className="py-0 px-1.5 text-left">
+                               <TableCell className="w-[280px] py-0 px-1.5 text-left">
                                   <div className="flex justify-start items-center gap-2">
                                     {statusInfo.status === 'Absent' ? (
                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -604,6 +642,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                     {statusInfo.time && <span className="text-base text-slate-400 font-mono opacity-70 ml-2 leading-none whitespace-nowrap">{format(new Date(statusInfo.time), 'h:mm a')}</span>}
                                   </div>
                                </TableCell>
+                               <TableCell className="w-full"></TableCell>
                             </TableRow>
                         );
                       })

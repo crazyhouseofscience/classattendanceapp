@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDB, ScanEvent, Student } from '../lib/db';
+import { getDB, ScanEvent, Student, Schedule } from '../lib/db';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { format } from 'date-fns';
 import { Input } from './ui/input';
@@ -9,9 +9,11 @@ import { toast } from 'sonner';
 
 interface ReportsTabProps {
   activePeriodName: string | null;
+  activeScheduleId: string | null;
+  activeSchedule?: Schedule;
 }
 
-export function ReportsTab({ activePeriodName }: ReportsTabProps) {
+export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule }: ReportsTabProps) {
   const [scans, setScans] = useState<(ScanEvent & { studentInfo?: Student })[]>([]);
   const [filterDate, setFilterDate] = useState(format(new Date(), 'yyyy-MM-dd'));
 
@@ -40,13 +42,52 @@ export function ReportsTab({ activePeriodName }: ReportsTabProps) {
     setScans(filtered);
   }
 
+  const getScanStatus = (scan: ScanEvent) => {
+     if (scan.movementType && scan.movementType !== 'Attendance') {
+       return { status: scan.movementType, color: 'bg-blue-100 text-blue-800' };
+     }
+     
+     if (scan.status === 'unknown_barcode') return { status: 'NOT FOUND', color: 'bg-red-100 text-red-800' };
+     if (scan.status === 'not_in_period') return { status: 'NOT IN ROSTER', color: 'bg-amber-100 text-amber-800' };
+
+     if (scan.manualStatus) {
+       return { 
+         status: scan.manualStatus.toUpperCase(), 
+         color: scan.manualStatus === 'Late' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800' 
+       };
+     }
+
+     const periodConfig = activeSchedule?.periods.find(p => p.name === scan.periodName);
+     const overrideKey = `override_${filterDate}_${activeScheduleId}_${scan.periodName}`;
+     const manualStartTime = localStorage.getItem(overrideKey);
+     const effectiveStartTime = manualStartTime || periodConfig?.startTime;
+     const gracePeriod = parseInt(localStorage.getItem('grace_period') || '5');
+
+     if (effectiveStartTime) {
+         const [baseH, baseM] = effectiveStartTime.split(':').map(Number);
+         const baseMinutes = baseH * 60 + baseM;
+         const cutoffMinutes = baseMinutes + gracePeriod;
+
+         const scanDate = new Date(scan.timestamp);
+         const scanH = scanDate.getHours();
+         const scanM = scanDate.getMinutes();
+         const scanMinutes = scanH * 60 + scanM;
+
+         if (scanMinutes > cutoffMinutes) {
+             return { status: 'LATE', color: 'bg-amber-100 text-amber-800' };
+         }
+     }
+     
+     return { status: 'ON TIME', color: 'bg-green-100 text-green-800' };
+  };
+
   const exportToCSV = () => {
     if (scans.length === 0) {
       toast.error('No data to export');
       return;
     }
 
-    const headers = ['Timestamp', 'Date', 'Period', 'Barcode/ID', 'First Name', 'Last Name', 'Movement Type', 'Notes'];
+    const headers = ['Timestamp', 'Date', 'Period', 'Barcode/ID', 'First Name', 'Last Name', 'Status', 'Reason/Notes'];
     const rows = scans.map(s => [
       format(new Date(s.timestamp), 'h:mm:ss a'),
       s.date,
@@ -54,7 +95,7 @@ export function ReportsTab({ activePeriodName }: ReportsTabProps) {
       s.studentId,
       s.studentInfo?.firstName || 'Unknown',
       s.studentInfo?.lastName || 'Unknown',
-      s.movementType || 'Scan',
+      getScanStatus(s).status,
       (s.notes || '').replace(/,/g, ';') // Avoid CSV issues with commas
     ]);
 
@@ -127,13 +168,10 @@ export function ReportsTab({ activePeriodName }: ReportsTabProps) {
                       : <span className="text-red-500 italic">Unknown</span>}
                   </TableCell>
                   <TableCell>
-                    {s.status === 'success' ? (
-                      <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-semibold">SUCCESS</span>
-                    ) : s.status === 'not_in_period' as any ? (
-                      <span className="px-2 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-semibold">NOT IN ROSTER</span>
-                    ) : (
-                       <span className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs font-semibold">NOT FOUND</span>
-                    )}
+                    {(() => {
+                        const { status, color } = getScanStatus(s);
+                        return <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase ${color}`}>{status}</span>;
+                    })()}
                   </TableCell>
                 </TableRow>
               ))
