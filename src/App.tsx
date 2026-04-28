@@ -326,8 +326,8 @@ export default function App() {
         </Tabs>
       </main>
       
-      {/* Privacy Footer */}
-      <footer className="max-w-7xl mx-auto px-4 py-2 flex flex-col items-center gap-1 border-t mt-4">
+      {/* Privacy & Attribution Footer */}
+      <footer className="max-w-7xl mx-auto px-4 py-3 flex flex-col items-center gap-1.5 border-t mt-4">
          <div className="flex items-center gap-2 text-slate-400">
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
             <p className="text-[10px] font-bold uppercase tracking-wider">Privacy First Data Storage</p>
@@ -335,6 +335,9 @@ export default function App() {
          <p className="text-[10px] text-slate-400 text-center max-w-lg leading-relaxed">
             This application stores all student data <strong>locally in your browser</strong>. 
             No data is uploaded to our servers. Your data only leaves this device if you explicitly use the "Backup" (to your personal Google Drive) or "Export" buttons above.
+         </p>
+         <p className="text-[9px] text-slate-400 mt-1 font-medium tracking-wide">
+            Designed by Keith Chapman v 1.0 2026 with Google AI Studio
          </p>
       </footer>
 

@@ -1,6 +1,6 @@
 {
   "name": "K-12 Barcode Scanner",
-  "description": "Offline-first barcode scanner and Student Information Management System (SIMS) with Google Drive backup. Organized by class periods.",
+  "description": "Offline-first barcode scanner and Student Information Management System (SIMS) with Google Drive backup. Organized by class periods. Designed by Keith Chapman v 1.0 2026 with Google AI Studio.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

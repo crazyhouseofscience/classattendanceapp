@@ -4,9 +4,11 @@ import { Label } from './ui/label';
 import { Button } from './ui/button';
 import { getDB, Student, ScanEvent, Schedule } from '../lib/db';
 import { format } from 'date-fns';
-import { CheckCircle, XCircle, AlertTriangle, Clock } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, Clock, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
+import { Input } from './ui/input';
 
 interface ScannerTabProps {
   activeScheduleId: string | null;
@@ -23,6 +25,33 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const [scans, setScans] = useState<(ScanEvent & { studentInfo?: Student })[]>([]);
   const [gracePeriodInternal, setGracePeriodInternal] = useState(5);
   const [scanReason, setScanReason] = useState<string | null>(null);
+
+  const [editingScanId, setEditingScanId] = useState<string | null>(null);
+  const [editingTimeStr, setEditingTimeStr] = useState<string>('');
+
+  const openEditTime = (scanId: string, currentTimeMs: number) => {
+     setEditingScanId(scanId);
+     const d = new Date(currentTimeMs);
+     const h = d.getHours().toString().padStart(2, '0');
+     const m = d.getMinutes().toString().padStart(2, '0');
+     setEditingTimeStr(`${h}:${m}`);
+  };
+
+  const saveEditTime = async () => {
+    if (!editingScanId || !editingTimeStr) return;
+    const db = await getDB();
+    const scan = await db.get('scans', editingScanId);
+    if (scan) {
+       const [h, m] = editingTimeStr.split(':').map(Number);
+       const d = new Date(scan.timestamp);
+       d.setHours(h, m, 0, 0);
+       scan.timestamp = d.getTime();
+       await db.put('scans', scan);
+       await loadData();
+       toast.success('Time updated manually.');
+    }
+    setEditingScanId(null);
+  };
 
   useEffect(() => {
     const saved = localStorage.getItem('grace_period');
@@ -46,10 +75,10 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
      const attendanceScan = scans.find(s => s.studentId === student.id && s.movementType === 'Attendance');
      const scan = attendanceScan || scans.find(s => s.studentId === student.id); // Fallback to first scan if movementType not set yet
 
-     if (!scan) return { status: 'Absent', text: 'Absent', time: null };
+     if (!scan) return { status: 'Absent', text: 'Absent', time: null, scanId: null };
      
      if (scan.manualStatus) {
-        return { status: scan.manualStatus as any, text: scan.manualStatus, time: scan.timestamp, excused: !!scan.isExcused };
+        return { status: scan.manualStatus as any, text: scan.manualStatus, time: scan.timestamp, excused: !!scan.isExcused, scanId: scan.id };
      }
 
      const effectiveStartTime = manualStartTime || currentPeriodConfig?.startTime;
@@ -65,11 +94,11 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
          const scanMinutes = scanH * 60 + scanM;
 
          if (scanMinutes > cutoffMinutes) {
-             return { status: 'Late', text: 'Late', time: scan.timestamp, excused: !!scan.isExcused };
+             return { status: 'Late', text: 'Late', time: scan.timestamp, excused: !!scan.isExcused, scanId: scan.id };
          }
      }
      
-     return { status: 'OnTime', text: 'On Time', time: scan.timestamp, excused: !!scan.isExcused };
+     return { status: 'OnTime', text: 'On Time', time: scan.timestamp, excused: !!scan.isExcused, scanId: scan.id };
   };
 
   const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status'>('lastName');
@@ -646,13 +675,20 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                   </div>
                                </TableCell>
                                <TableCell className="w-[140px] py-0 px-1.5 text-center">
-                                  <div className="flex items-center justify-center gap-2">
+                                   <div className="flex items-center justify-center gap-2">
                                     {statusInfo.status === 'OnTime' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-green-100 text-green-700 border border-green-200 uppercase">ON TIME</span>}
                                     {statusInfo.status === 'Late' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-amber-100 text-amber-700 border border-amber-200 uppercase">LATE</span>}
                                     {statusInfo.status === 'Present' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase">PRESENT</span>}
                                     {statusInfo.status === 'Absent' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-slate-50 text-slate-300 border border-slate-100 uppercase">ABSENT</span>}
                                     {statusInfo.excused && <span className="px-2.5 py-1 rounded-[2px] text-[10px] font-black bg-blue-600 text-white shadow-sm uppercase tracking-tighter">Pass</span>}
-                                    {statusInfo.time && <span className="text-base text-slate-400 font-mono opacity-70 ml-2 leading-none whitespace-nowrap">{format(new Date(statusInfo.time), 'h:mm a')}</span>}
+                                    {statusInfo.time && (
+                                       <div className="flex items-center gap-1 group/time ml-2">
+                                          <span className="text-base text-slate-400 font-mono opacity-70 leading-none whitespace-nowrap">{format(new Date(statusInfo.time), 'h:mm a')}</span>
+                                          <button onClick={() => statusInfo.scanId && openEditTime(statusInfo.scanId, statusInfo.time!)} className="opacity-0 group-hover/time:opacity-100 p-0.5 text-slate-300 hover:text-indigo-600 transition-opacity" title="Edit Time">
+                                             <Edit2 className="w-3.5 h-3.5" />
+                                          </button>
+                                       </div>
+                                    )}
                                   </div>
                                </TableCell>
                                <TableCell className="w-full"></TableCell>
@@ -767,6 +803,27 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
               </div>
            </div>
         )}
+
+         <Dialog open={!!editingScanId} onOpenChange={(open) => !open && setEditingScanId(null)}>
+            <DialogContent className="sm:max-w-sm">
+               <DialogHeader>
+                  <DialogTitle>Edit Scan Time</DialogTitle>
+               </DialogHeader>
+               <div className="py-4">
+                  <Label className="mb-2 block text-xs font-bold text-slate-500 uppercase tracking-widest">Marked Time</Label>
+                  <Input 
+                     type="time" 
+                     value={editingTimeStr}
+                     onChange={(e) => setEditingTimeStr(e.target.value)}
+                     className="text-lg font-mono"
+                  />
+               </div>
+               <DialogFooter>
+                  <Button variant="ghost" onClick={() => setEditingScanId(null)}>Cancel</Button>
+                  <Button onClick={saveEditTime} className="bg-indigo-600 hover:bg-indigo-700">Save Time</Button>
+               </DialogFooter>
+            </DialogContent>
+         </Dialog>
 
       </div>
     </div>
