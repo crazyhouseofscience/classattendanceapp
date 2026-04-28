@@ -104,8 +104,10 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status'>('lastName');
   const [elapsedTime, setElapsedTime] = useState<string>('00:00');
   const [manualStartTimeInternal, setManualStartTimeInternal] = useState<string | null>(null);
+  const [manualEndTimeInternal, setManualEndTimeInternal] = useState<string | null>(null);
 
   const getOverrideKey = () => `override_${format(new Date(), 'yyyy-MM-dd')}_${activeScheduleId}_${activePeriodName}`;
+  const getOverrideEndKey = () => `override_end_${format(new Date(), 'yyyy-MM-dd')}_${activeScheduleId}_${activePeriodName}`;
 
   const setManualStartTime = (time: string | null) => {
     const key = getOverrideKey();
@@ -114,23 +116,43 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     setManualStartTimeInternal(time);
   };
 
+  const setManualEndTime = (time: string | null) => {
+    const key = getOverrideEndKey();
+    if (time) localStorage.setItem(key, time);
+    else localStorage.removeItem(key);
+    setManualEndTimeInternal(time);
+  };
+
   const manualStartTime = manualStartTimeInternal;
+  const manualEndTime = manualEndTimeInternal;
 
   useEffect(() => {
     const key = getOverrideKey();
+    const endKey = getOverrideEndKey();
     setManualStartTimeInternal(localStorage.getItem(key));
+    setManualEndTimeInternal(localStorage.getItem(endKey));
   }, [activePeriodName, activeScheduleId]);
 
   useEffect(() => {
     const timer = setInterval(() => {
       const startTimeStr = manualStartTime || currentPeriodConfig?.startTime;
+      const endTimeStr = manualEndTime || currentPeriodConfig?.endTime;
+      
       if (startTimeStr) {
         const now = new Date();
         const [hours, minutes] = startTimeStr.split(':').map(Number);
         const startTime = new Date();
         startTime.setHours(hours, minutes, 0, 0);
 
-        const diff = now.getTime() - startTime.getTime();
+        let endTime = new Date();
+        if (endTimeStr) {
+           const [eHours, eMinutes] = endTimeStr.split(':').map(Number);
+           endTime.setHours(eHours, eMinutes, 0, 0);
+        }
+
+        const effectiveNow = endTimeStr && now > endTime ? endTime : now;
+        const diff = effectiveNow.getTime() - startTime.getTime();
+        
         if (diff > 0) {
           const totalSeconds = Math.floor(diff / 1000);
           const mins = Math.floor(totalSeconds / 60);
@@ -142,7 +164,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
       }
     }, 1000);
     return () => clearInterval(timer);
-  }, [currentPeriodConfig, manualStartTime]);
+  }, [currentPeriodConfig, manualStartTime, manualEndTime]);
 
   const sortedStudents = [...students].sort((a, b) => {
     if (sortBy === 'status') {
@@ -402,26 +424,43 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
           <div className="flex-1 flex justify-center items-center gap-6">
              {isReady && currentPeriodConfig ? (
                <>
-                 <p className="text-lg text-slate-700 font-extrabold uppercase tracking-wider leading-none">
-                    {manualStartTime || currentPeriodConfig.startTime} - {currentPeriodConfig.endTime}
-                 </p>
-                 
-                 <div className="flex items-center gap-2 group/manual">
-                    <input 
-                      type="time" 
-                      className="text-base bg-white border border-slate-300 rounded px-2.5 h-9 font-bold focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
-                      value={manualStartTime || currentPeriodConfig?.startTime || ''}
-                      onChange={(e) => setManualStartTime(e.target.value)}
-                      title="Override Period Start Time"
-                    />
-                    {manualStartTime && (
-                       <button 
-                         onClick={() => setManualStartTime(null)}
-                         className="text-xs font-bold text-red-500 hover:text-red-700 uppercase bg-red-50 px-2 py-1 rounded"
-                       >
-                          Reset
-                       </button>
-                    )}
+                 <div className="flex flex-col items-center gap-1 group/manual">
+                    <div className="flex items-center gap-2">
+                       <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Start</span>
+                       <input 
+                         type="time" 
+                         className="text-base bg-white border border-slate-300 rounded px-2.5 h-8 font-bold focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+                         value={manualStartTime || currentPeriodConfig?.startTime || ''}
+                         onChange={(e) => setManualStartTime(e.target.value)}
+                         title="Override Period Start Time"
+                       />
+                       {manualStartTime && (
+                          <button 
+                            onClick={() => setManualStartTime(null)}
+                            className="text-xs font-bold text-red-500 hover:text-red-700 uppercase bg-red-50 px-2 py-1 rounded"
+                          >
+                             Reset
+                          </button>
+                       )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                       <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">End</span>
+                       <input 
+                         type="time" 
+                         className="text-base bg-white border border-slate-300 rounded px-2.5 h-8 font-bold focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+                         value={manualEndTime || currentPeriodConfig?.endTime || ''}
+                         onChange={(e) => setManualEndTime(e.target.value)}
+                         title="Override Period End Time"
+                       />
+                       {manualEndTime && (
+                          <button 
+                            onClick={() => setManualEndTime(null)}
+                            className="text-xs font-bold text-red-500 hover:text-red-700 uppercase bg-red-50 px-2 py-1 rounded"
+                          >
+                             Reset
+                          </button>
+                       )}
+                    </div>
                  </div>
 
                  <span className="text-sm shadow-sm bg-indigo-100 text-indigo-700 px-4 py-1.5 rounded-md font-black tabular-nums border border-indigo-200">
