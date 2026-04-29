@@ -101,7 +101,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
      return { status: 'OnTime', text: 'On Time', time: scan.timestamp, excused: !!scan.isExcused, scanId: scan.id };
   };
 
-  const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status'>('lastName');
+  const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status' | 'rank'>('lastName');
   const [elapsedTime, setElapsedTime] = useState<string>('00:00');
   const [manualStartTimeInternal, setManualStartTimeInternal] = useState<string | null>(null);
   const [manualEndTimeInternal, setManualEndTimeInternal] = useState<string | null>(null);
@@ -171,11 +171,31 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
       const statusA = getStudentStatus(a).status;
       const statusB = getStudentStatus(b).status;
       if (statusA !== statusB) return statusA.localeCompare(statusB);
+      if (a.gradebookRank && b.gradebookRank) {
+          const numA = Number(a.gradebookRank.replace(/[^0-9.]/g, ''));
+          const numB = Number(b.gradebookRank.replace(/[^0-9.]/g, ''));
+          if (!isNaN(numA) && !isNaN(numB) && numA !== numB) return numA - numB;
+          const cmp = a.gradebookRank.localeCompare(b.gradebookRank, undefined, {numeric: true});
+          if (cmp !== 0) return cmp;
+      }
       return a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName);
     }
     
     if (sortBy === 'firstName') {
        return a.firstName.localeCompare(b.firstName) || a.lastName.localeCompare(b.lastName);
+    }
+
+    if (sortBy === 'rank') {
+       if (a.gradebookRank && !b.gradebookRank) return -1;
+       if (!a.gradebookRank && b.gradebookRank) return 1;
+       if (a.gradebookRank && b.gradebookRank) {
+          const numA = Number(a.gradebookRank.replace(/[^0-9.]/g, ''));
+          const numB = Number(b.gradebookRank.replace(/[^0-9.]/g, ''));
+          if (!isNaN(numA) && !isNaN(numB) && numA !== numB) return numA - numB;
+          const cmp = a.gradebookRank.localeCompare(b.gradebookRank, undefined, {numeric: true});
+          if (cmp !== 0) return cmp;
+       }
+       return a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName);
     }
 
     return a.lastName.localeCompare(b.lastName) || a.firstName.localeCompare(b.firstName);
@@ -607,6 +627,14 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                  >
                     Status
                  </Button>
+                 <Button 
+                    variant={sortBy === 'rank' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setSortBy('rank')}
+                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'rank' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                 >
+                    Rank
+                 </Button>
               </div>
            )}
         </div>
@@ -617,7 +645,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                 <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Attendance Roster</h3>
                 <span className="text-[9px] text-slate-400 font-bold">{students.length} Students</span>
              </div>
-             <div className="flex-1 overflow-y-auto">
+             <div className="flex-1 overflow-y-auto overflow-x-hidden">
                <Table>
                  <TableHeader className="bg-slate-50/90 sticky top-0 z-20 backdrop-blur-sm shadow-sm">
                    <TableRow className="h-6 border-b-2 bg-slate-50">
@@ -660,6 +688,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                <TableCell className="w-[180px] py-0 px-2">
                                   <div className="flex items-center gap-2 overflow-hidden">
                                      <span className={`text-xs font-bold leading-none truncate ${nameColor}`}>{student.firstName} {student.lastName}</span>
+                                     {student.gradebookRank && <span className="text-[9px] bg-indigo-50 text-indigo-500 font-black px-1 rounded-sm shadow-sm ring-1 ring-indigo-200">#{student.gradebookRank}</span>}
                                      <span className="text-[10px] text-slate-300 font-mono tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity leading-none uppercase shrink-0">{student.id}</span>
                                      {moveStatus?.out && (
                                         <span className="inline-flex items-center gap-1 font-black text-[10px] text-amber-600 uppercase bg-amber-50 px-2 rounded ring-1 ring-amber-100 leading-none py-1.5">

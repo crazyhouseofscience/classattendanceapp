@@ -6,6 +6,7 @@ export interface Student {
   lastName: string;
   grade: string;
   notes: string;
+  gradebookRank?: string;
   periods?: string[]; // Array of period names this student is assigned to
 }
 

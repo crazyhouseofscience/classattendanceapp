@@ -24,8 +24,8 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
   const [isMappingDialogOpen, setIsMappingDialogOpen] = useState(false);
   const [csvData, setCsvData] = useState<any[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
-  const [columnMapping, setColumnMapping] = useState<{id: string, firstName: string, lastName: string, name: string, grade: string, periods: string[]}>({
-    id: '', firstName: '', lastName: '', name: '', periods: [], grade: ''
+  const [columnMapping, setColumnMapping] = useState<{id: string, firstName: string, lastName: string, name: string, grade: string, gradebookRank: string, periods: string[]}>({
+    id: '', firstName: '', lastName: '', name: '', periods: [], grade: '', gradebookRank: ''
   });
   const [enrollSearch, setEnrollSearch] = useState('');
   const [editingStudent, setEditingStudent] = useState<Partial<Student>>({});
@@ -185,7 +185,8 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
                 id: String(idVal).trim(),
                 firstName: firstName.trim() || existing?.firstName || 'Imported',
                 lastName: lastName.trim() || existing?.lastName || '',
-                grade: String(columnMapping.grade ? row[columnMapping.grade] : '').trim() || existing?.grade || '',
+                grade: String(columnMapping.grade && row[columnMapping.grade] ? row[columnMapping.grade] : '').trim() || existing?.grade || '',
+                gradebookRank: String(columnMapping.gradebookRank && row[columnMapping.gradebookRank] ? row[columnMapping.gradebookRank] : '').trim() || existing?.gradebookRank || '',
                 notes: existing?.notes || '',
                 periods: periodsArr.length > 0 ? periodsArr : undefined
              };
@@ -364,6 +365,13 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
                         <SelectContent><SelectItem value="">Skip</SelectItem>{csvHeaders.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
                     </Select>
                  </div>
+                 <div className="grid grid-cols-2 gap-4 items-center">
+                    <Label>Gradebook Rank / Order</Label>
+                    <Select value={columnMapping.gradebookRank} onValueChange={(val) => setColumnMapping({...columnMapping, gradebookRank: val})}>
+                        <SelectTrigger><SelectValue placeholder="Skip" /></SelectTrigger>
+                        <SelectContent><SelectItem value="">Skip</SelectItem>{csvHeaders.map(h => <SelectItem key={h} value={h}>{h}</SelectItem>)}</SelectContent>
+                    </Select>
+                 </div>
                  <div className="grid grid-cols-2 gap-4 items-start border-t pt-4">
                     <div className="space-y-1">
                         <Label>Periods / Classes</Label>
@@ -465,9 +473,15 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
                     <Input required value={editingStudent.lastName || ''} onChange={e => setEditingStudent({...editingStudent, lastName: e.target.value})} />
                   </div>
                 </div>
-                <div className="space-y-2">
-                  <Label>Grade/Home Room</Label>
-                  <Input value={editingStudent.grade || ''} onChange={e => setEditingStudent({...editingStudent, grade: e.target.value})} />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Grade/Home Room</Label>
+                    <Input value={editingStudent.grade || ''} onChange={e => setEditingStudent({...editingStudent, grade: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Gradebook Rank</Label>
+                    <Input value={editingStudent.gradebookRank || ''} onChange={e => setEditingStudent({...editingStudent, gradebookRank: e.target.value})} />
+                  </div>
                 </div>
                 
                 {activeSchedule && (
@@ -505,7 +519,7 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
         </div>
       </div>
 
-      <div className="border rounded-xl bg-white overflow-hidden">
+      <div className="border rounded-xl bg-white">
         <Table>
           <TableHeader className="bg-slate-50">
             <TableRow>
@@ -513,13 +527,14 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
               <TableHead>First Name</TableHead>
               <TableHead>Last Name</TableHead>
               <TableHead>Grade</TableHead>
+              <TableHead>Rank</TableHead>
               <TableHead>Periods</TableHead>
-              <TableHead className="w-20">Actions</TableHead>
+              <TableHead className="w-16">Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {students.length === 0 ? (
-              <TableRow><TableCell colSpan={6} className="text-center text-slate-500 py-8">
+              <TableRow><TableCell colSpan={7} className="text-center text-slate-500 py-8">
                 {activePeriodName && activePeriodName !== 'all' 
                   ? `No students found in ${activePeriodName}.`
                   : "No students found. Import a CSV or add manually."}
@@ -528,11 +543,12 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
               students.map(s => (
                 <TableRow key={s.id}>
                   <TableCell className="font-mono">{s.id}</TableCell>
-                  <TableCell>{s.firstName}</TableCell>
-                  <TableCell>{s.lastName}</TableCell>
+                  <TableCell className="whitespace-normal">{s.firstName}</TableCell>
+                  <TableCell className="whitespace-normal">{s.lastName}</TableCell>
                   <TableCell>{s.grade}</TableCell>
-                  <TableCell><span className="text-xs text-slate-500">{s.periods?.join(', ') || 'None'}</span></TableCell>
-                  <TableCell>
+                  <TableCell>{s.gradebookRank || '-'}</TableCell>
+                  <TableCell className="whitespace-normal max-w-[200px]"><span className="text-xs text-slate-500">{s.periods?.join(', ') || 'None'}</span></TableCell>
+                  <TableCell className="w-16">
                     <Button variant="ghost" size="sm" onClick={() => {
                       setOriginalEditId(s.id);
                       setEditingStudent(s);
