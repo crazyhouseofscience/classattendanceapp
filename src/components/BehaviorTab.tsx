@@ -1,242 +1,580 @@
 import React, { useState, useEffect } from 'react';
 import { getDB, Student, BehaviorEvent } from '../lib/db';
-import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Badge } from './badge';
-import { ThumbsUp, ThumbsDown, Trash2 } from 'lucide-react';
+import { DndContext, closestCenter, DragEndEvent, useDraggable, useSensors, useSensor, PointerSensor } from '@dnd-kit/core';
+import { CSS } from '@dnd-kit/utilities';
+import { Layout, Users as UsersIcon, Undo2, GripHorizontal, Settings, X, Plus, Trash2, Upload } from 'lucide-react';
+import { cn } from '../lib/utils';
 
-const POSITIVE_CATEGORIES = ['Participation', 'Helping Others', 'On Task', 'Great Answer', 'Leadership'];
-const NEGATIVE_CATEGORIES = ['Off Task', 'Disrespect', 'Unprepared', 'Disrupting Class', 'Tardy (Behavior)'];
+const DEFAULT_BEHAVIORS = [
+  { id: 'b1', name: 'On Task', points: 1, type: 'Positive' },
+  { id: 'b2', name: 'Helping Others', points: 1, type: 'Positive' },
+  { id: 'b3', name: 'Great Answer', points: 1, type: 'Positive' },
+  { id: 'b4', name: 'Off Task', points: -1, type: 'Negative' },
+  { id: 'b5', name: 'Disrespect', points: -2, type: 'Negative' },
+  { id: 'b6', name: 'Unprepared', points: -1, type: 'Negative' }
+];
 
-export function BehaviorTab() {
+export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeriodName?: string | null, activeScheduleId?: string | null }) {
   const [students, setStudents] = useState<Student[]>([]);
-  const [behaviors, setBehaviors] = useState<(BehaviorEvent & { studentInfo?: Student })[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStudentId, setSelectedStudentId] = useState<string | null>(null);
+  const [behaviorsHistory, setBehaviorsHistory] = useState<BehaviorEvent[]>([]);
+  const [behaviors, setBehaviors] = useState(DEFAULT_BEHAVIORS);
+  const [absentStudents, setAbsentStudents] = useState<Set<string>>(new Set());
+  const [layoutMode, setLayoutMode] = useState<'grid' | 'freeform'>('grid');
+  const [compactMode, setCompactMode] = useState(false);
+  const [showBehaviorManager, setShowBehaviorManager] = useState(false);
+
+  // Setup sensors for DND kit to ensure clicks inside draggable cards aren't blocked easily
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    })
+  );
 
   useEffect(() => {
     loadData();
-  }, []);
+  }, [activePeriodName]);
 
   const loadData = async () => {
     const db = await getDB();
     const allStudents = await db.getAll('students');
-    setStudents(allStudents.sort((a, b) => a.lastName.localeCompare(b.lastName)));
-
-    const today = format(new Date(), 'yyyy-MM-dd');
-    const index = db.transaction('behaviors').store.index('by-date');
-    const todayBehaviors = await index.getAll(today);
-
-    // populate student info
-    const populated = await Promise.all(todayBehaviors.map(async (b) => {
-      const student = await db.get('students', b.studentId);
-      return { ...b, studentInfo: student };
-    }));
     
-    setBehaviors(populated.sort((a,b) => b.timestamp - a.timestamp));
+    let filteredStudents = allStudents;
+    if (activePeriodName && activePeriodName !== 'all') {
+       filteredStudents = allStudents.filter(s => s.periods && s.periods.includes(activePeriodName));
+    }
+    setStudents(filteredStudents.sort((a, b) => a.lastName.localeCompare(b.lastName)));
+
+    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const index = db.transaction('behaviors').store.index('by-date');
+    const todayBehaviors = await index.getAll(todayStr);
+    setBehaviorsHistory(todayBehaviors);
+    
+    const settingsStore = db.transaction('settings').store;
+    const customBehaviors = await settingsStore.get('custom_behaviors');
+    if (customBehaviors) {
+       setBehaviors(customBehaviors.value);
+    }
+    
+    const scansIndex = db.transaction('scans').store.index('by-date');
+    const todayScans = await scansIndex.getAll(todayStr);
+    const absentIds = new Set<string>();
+    
+    filteredStudents.forEach(s => {
+       const sScans = todayScans.filter(scan => scan.studentId === s.id);
+       const latestScan = sScans[sScans.length - 1]; // naive
+       const isAbsent = latestScan && (latestScan.manualStatus === 'Absent' || latestScan.manualStatus === 'Absent');
+       // Real app logic for attendance might be more complex, but let's check manualStatus or lack thereof
+       // Wait, scanner tab has a specific way it calculates. Let's see if any manualStatus is Absent.
+       const manualAbsent = sScans.some(scan => scan.manualStatus === 'Absent' && (!scan.movementType || scan.movementType === 'Attendance'));
+       if (manualAbsent) {
+          absentIds.add(s.id);
+       }
+    });
+    setAbsentStudents(absentIds);
   };
 
-  const getStudentTotal = (studentId: string) => {
-    return behaviors.filter(b => b.studentId === studentId).reduce((sum, b) => sum + b.points, 0);
-  };
 
-  const handleLogBehavior = async (studentId: string, type: 'Positive' | 'Negative', category: string, points: number) => {
+  const trackBehavior = async (studentId: string, b: any) => {
     const db = await getDB();
     const now = Date.now();
     const newBehavior: BehaviorEvent = {
-      id: `beh_${now}_${Math.random().toString(36).substring(2)}`,
-      studentId,
-      timestamp: now,
-      date: format(now, 'yyyy-MM-dd'),
-      type,
-      category,
-      points
+        id: `beh_${now}_${Math.random().toString(36).substring(2)}`,
+        studentId,
+        timestamp: now,
+        date: format(now, 'yyyy-MM-dd'),
+        type: b.type as any,
+        category: b.name,
+        points: b.points
     };
     await db.put('behaviors', newBehavior);
-    toast.success(`Logged ${category} (${points > 0 ? '+' : ''}${points})`);
+    toast.success(`Logged ${b.name} (${b.points > 0 ? '+' : ''}${b.points})`);
     loadData();
   };
 
-  const handleDeleteBehavior = async (id: string) => {
+  const undoLastBehavior = async (studentId: string) => {
     const db = await getDB();
-    await db.delete('behaviors', id);
-    loadData();
+    const studentBehaviorsList = behaviorsHistory.filter(b => b.studentId === studentId);
+    if (studentBehaviorsList.length > 0) {
+       const latest = studentBehaviorsList.sort((a,b) => b.timestamp - a.timestamp)[0];
+       await db.delete('behaviors', latest.id);
+       toast.success(`Undo successful`);
+       loadData();
+    }
   };
 
-  const filteredStudents = students.filter(s => 
-    s.firstName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    s.lastName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.id.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const saveBehaviors = async (newBehaviors: any[]) => {
+    const db = await getDB();
+    await db.put('settings', { key: 'custom_behaviors', value: newBehaviors });
+    setBehaviors(newBehaviors);
+  };
 
-  const selectedStudent = students.find(s => s.id === selectedStudentId);
+  const importOldBackup = async (file: File) => {
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        if (Array.isArray(data)) {
+          const db = await getDB();
+          let allBehaviorsFromOld: any[] = [];
+          
+          for (const oldClass of data) {
+             for (const b of (oldClass.behaviors || [])) {
+                 if (!allBehaviorsFromOld.find(ex => ex.name === b.name)) {
+                     allBehaviorsFromOld.push({
+                         id: crypto.randomUUID(),
+                         name: b.name,
+                         points: b.points,
+                         type: b.type === 'Positive' || b.type === 'positive' ? 'Positive' : 'Negative'
+                     });
+                 }
+             }
+
+             for (const s of (oldClass.students || [])) {
+                 const nameParts = s.name.split(' ');
+                 const firstName = nameParts[0];
+                 const lastName = nameParts.slice(1).join(' ');
+                 
+                 const existingS = await db.get('students', s.id);
+                 if (existingS) {
+                     if (!existingS.periods?.includes(oldClass.name)) {
+                         existingS.periods = [...(existingS.periods || []), oldClass.name];
+                         await db.put('students', existingS);
+                     }
+                 } else {
+                     await db.put('students', {
+                         id: s.id,
+                         firstName,
+                         lastName,
+                         grade: '',
+                         notes: '',
+                         periods: [oldClass.name],
+                         x: s.x,
+                         y: s.y
+                     });
+                 }
+                 
+                 for (const log of (s.logs || [])) {
+                    const b = oldClass.behaviors?.find((be: any) => be.id === log.behaviorId);
+                    if (b || log.type === 'neutral') {
+                       const category = log.type === 'neutral' ? 'Note' : (b?.name || 'Unknown');
+                       await db.put('behaviors', {
+                           id: log.id || crypto.randomUUID(),
+                           studentId: s.id,
+                           timestamp: log.timestamp,
+                           date: format(log.timestamp, 'yyyy-MM-dd'),
+                           type: log.type === 'positive' ? 'Positive' : log.type === 'negative' ? 'Negative' : 'Neutral',
+                           category: category,
+                           points: log.points || b?.points || 0,
+                           notes: log.comment
+                       });
+                    }
+                 }
+             }
+          }
+          
+          const settingsStore = db.transaction('settings').store;
+          const currentB = await settingsStore.get('custom_behaviors');
+          const mergedBehaviors = [...(currentB?.value || DEFAULT_BEHAVIORS)];
+          for (const ob of allBehaviorsFromOld) {
+             if (!mergedBehaviors.find(mb => mb.name === ob.name)) {
+                mergedBehaviors.push(ob);
+             }
+          }
+          await db.put('settings', { key: 'custom_behaviors', value: mergedBehaviors });
+          toast.success("Successfully imported data from old tracker!");
+          loadData();
+        } else {
+           toast.error("Invalid file format");
+        }
+      } catch (err) {
+        toast.error("Failed to parse file");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const exportBackup = async () => {
+    const db = await getDB();
+    const allStudents = await db.getAll('students');
+    const allBehaviors = await db.getAll('behaviors');
+    const allSettings = await db.getAll('settings');
+    const backupData = {
+        students: allStudents,
+        behaviorsEvents: allBehaviors,
+        settings: allSettings,
+        exportDate: new Date().toISOString()
+    };
+    const blob = new Blob([JSON.stringify(backupData)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `behavior_backup_${format(new Date(), 'yyyy-MM-dd')}.json`;
+    link.click();
+    toast.success("Backup exported!");
+  };
+
+
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, delta } = event;
+    if (layoutMode === 'freeform') {
+      if (!delta || (delta.x === 0 && delta.y === 0)) return;
+      
+      const db = await getDB();
+      const student = await db.get('students', active.id as string);
+      if (student) {
+        // Fallback for unset x/y
+        const index = students.findIndex(s => s.id === student.id);
+        const startX = student.x !== undefined ? student.x : (index % 5) * (compactMode ? 160 : 240) + 20;
+        const startY = student.y !== undefined ? student.y : Math.floor(index / 5) * (compactMode ? 80 : 120) + 20;
+
+        const updated = {
+           ...student,
+           x: startX + delta.x,
+           y: startY + delta.y
+        };
+        await db.put('students', updated);
+        loadData();
+      }
+    }
+  };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-7rem)]">
-      <div className="flex flex-col gap-1 mb-4">
-        <h2 className="text-xl font-black tracking-tight text-slate-800">Behavior Tracker</h2>
-        <p className="text-sm text-slate-500">Log points and track incidents for today.</p>
+    <div className="flex flex-col h-[calc(100vh-7rem)] overflow-hidden">
+      <div className="flex items-center justify-between mb-4 shrink-0 bg-white p-3 rounded-xl shadow-sm border border-slate-100 relative z-20">
+        <div>
+          <h2 className="text-xl font-black tracking-tight text-slate-800 leading-none">Behavior Tracker</h2>
+          <p className="text-sm text-slate-500">Track and manage student behavior</p>
+        </div>
+
+        <div className="flex items-center gap-2">
+            <button
+                onClick={exportBackup}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 shadow-sm transition-all"
+            >
+                <Upload size={14} />
+                Export
+            </button>
+            <button
+                onClick={() => {
+                   const input = document.createElement('input');
+                   input.type = 'file';
+                   input.accept = '.json';
+                   input.onchange = (e) => {
+                     const file = (e.target as HTMLInputElement).files?.[0];
+                     if (file) {
+                       importOldBackup(file);
+                     }
+                   };
+                   input.click();
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 shadow-sm transition-all"
+            >
+                <Upload size={14} />
+                Import
+            </button>
+
+            <button
+                onClick={() => setShowBehaviorManager(true)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 shadow-sm transition-all"
+            >
+                <Settings size={14} />
+                Behaviors
+            </button>
+
+            <button
+                onClick={() => setCompactMode(!compactMode)}
+                className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shadow-sm border",
+                    compactMode ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                )}
+            >
+                {compactMode ? "Expanded View" : "Compact View"}
+            </button>
+
+            <button
+                onClick={() => setLayoutMode(prev => prev === 'grid' ? 'freeform' : 'grid')}
+                className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shadow-sm border",
+                    layoutMode === 'freeform' ? "bg-purple-50 text-purple-700 border-purple-200" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                )}
+            >
+                {layoutMode === 'freeform' ? <Layout size={14} /> : <UsersIcon size={14} />}
+                {layoutMode === 'grid' ? "Grid View" : "Seating Chart"}
+            </button>
+        </div>
       </div>
 
-      <div className="flex-1 flex gap-4 min-h-0">
-        
-        {/* Left Column: Student List */}
-        <div className="w-1/3 flex flex-col border rounded-xl bg-white shadow-sm overflow-hidden">
-           <div className="p-3 border-b bg-slate-50">
-             <Input 
-               placeholder="Search students..." 
-               value={searchQuery}
-               onChange={(e) => setSearchQuery(e.target.value)}
-               className="bg-white"
-             />
-           </div>
-           <div className="flex-1 overflow-y-auto p-2">
-              <div className="flex flex-col gap-1">
-                {filteredStudents.map(student => {
-                  const points = getStudentTotal(student.id);
-                  const isSelected = selectedStudentId === student.id;
-                  return (
-                    <button 
-                      key={student.id}
-                      onClick={() => setSelectedStudentId(student.id)}
-                      className={`flex items-center justify-between p-2 rounded-lg border text-left transition-colors ${
-                        isSelected ? 'bg-indigo-50 border-indigo-200 shadow-sm' : 'hover:bg-slate-50 border-transparent'
-                      }`}
-                    >
-                       <div className="flex flex-col">
-                          <span className={`text-sm font-bold ${isSelected ? 'text-indigo-700' : 'text-slate-700'}`}>
-                            {student.firstName} {student.lastName}
-                          </span>
-                          <span className="text-[10px] text-slate-400 font-mono">{student.id}</span>
-                       </div>
-                       <div className={`px-2 py-0.5 rounded text-xs font-black tabular-nums ${
-                          points > 0 ? 'bg-green-100 text-green-700' : points < 0 ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-500'
-                       }`}>
-                         {points > 0 ? '+' : ''}{points}
-                       </div>
-                    </button>
-                  )
-                })}
-              </div>
-           </div>
-        </div>
-
-        {/* Middle Column: Quick Actions */}
-        <div className="w-1/3 flex flex-col border rounded-xl bg-white shadow-sm overflow-hidden">
-          <div className="p-3 border-b bg-slate-50 flex justify-between items-center">
-             <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Log Behavior</h3>
-          </div>
-          <div className="flex-1 overflow-y-auto p-4">
-             {!selectedStudent ? (
-               <div className="text-center py-12 text-slate-400 text-sm font-medium">Select a student first</div>
-             ) : (
-               <div className="flex flex-col gap-6">
-                  <div className="text-center pb-4 border-b">
-                     <h2 className="text-lg font-black text-slate-800">{selectedStudent.firstName} {selectedStudent.lastName}</h2>
-                     <p className="text-xs font-mono text-slate-400">{selectedStudent.id}</p>
-                  </div>
-
-                  <div>
-                     <h4 className="flex items-center gap-2 text-xs font-bold text-green-600 uppercase mb-3 tracking-wider">
-                        <ThumbsUp className="w-4 h-4" /> Positive (+1)
-                     </h4>
-                     <div className="flex flex-wrap gap-2">
-                        {POSITIVE_CATEGORIES.map(cat => (
-                           <Button 
-                             key={cat} 
-                             variant="outline" 
-                             size="sm" 
-                             onClick={() => handleLogBehavior(selectedStudent.id, 'Positive', cat, 1)}
-                             className="text-xs bg-green-50/50 border-green-200 text-green-700 hover:bg-green-100"
-                           >
-                             {cat}
-                           </Button>
-                        ))}
-                     </div>
-                  </div>
-
-                  <div>
-                     <h4 className="flex items-center gap-2 text-xs font-bold text-red-600 uppercase mb-3 tracking-wider">
-                        <ThumbsDown className="w-4 h-4" /> Negative (-1)
-                     </h4>
-                     <div className="flex flex-wrap gap-2">
-                        {NEGATIVE_CATEGORIES.map(cat => (
-                           <Button 
-                             key={cat} 
-                             variant="outline" 
-                             size="sm" 
-                             onClick={() => handleLogBehavior(selectedStudent.id, 'Negative', cat, -1)}
-                             className="text-xs bg-red-50/50 border-red-200 text-red-700 hover:bg-red-100"
-                           >
-                             {cat}
-                           </Button>
-                        ))}
-                     </div>
-                  </div>
-               </div>
-             )}
-          </div>
-        </div>
-
-        {/* Right Column: Activity Log */}
-        <div className="w-1/3 flex flex-col border rounded-xl bg-white shadow-sm overflow-hidden">
-          <div className="p-3 border-b bg-slate-50">
-             <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Today's Log</h3>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-             <Table>
-                <TableHeader className="bg-white sticky top-0">
-                   <TableRow>
-                      <TableHead>Student</TableHead>
-                      <TableHead>Event</TableHead>
-                      <TableHead className="text-right">Pts</TableHead>
-                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                   {behaviors.length === 0 ? (
-                      <TableRow>
-                         <TableCell colSpan={3} className="text-center py-8 text-slate-400 text-xs">No records for today</TableCell>
-                      </TableRow>
-                   ) : behaviors.map(b => (
-                      <TableRow key={b.id} className="group">
-                         <TableCell className="py-2">
-                            <div className="flex flex-col">
-                               <span className="text-xs font-bold text-slate-700">{b.studentInfo?.firstName} {b.studentInfo?.lastName}</span>
-                               <span className="text-[9px] text-slate-400 tabular-nums">{format(b.timestamp, 'h:mm a')}</span>
-                            </div>
-                         </TableCell>
-                         <TableCell className="py-2 text-xs text-slate-600 font-medium">
-                            {b.category}
-                         </TableCell>
-                         <TableCell className="py-2 text-right">
-                            <div className="flex items-center justify-end gap-2">
-                               <span className={`tabular-nums text-xs font-black ${
-                                  b.points > 0 ? 'text-green-600' : b.points < 0 ? 'text-red-600' : 'text-slate-500'
-                               }`}>
-                                  {b.points > 0 ? '+' : ''}{b.points}
-                               </span>
-                               <Button 
-                                 variant="ghost" 
-                                 size="sm" 
-                                 onClick={() => handleDeleteBehavior(b.id)} 
-                                 className="h-5 w-5 p-0 text-red-300 hover:text-red-600 opacity-0 group-hover:opacity-100"
-                               >
-                                  <Trash2 className="w-3 h-3" />
-                               </Button>
-                            </div>
-                         </TableCell>
-                      </TableRow>
-                   ))}
-                </TableBody>
-             </Table>
-          </div>
-        </div>
-
+      <div className="flex-1 overflow-y-auto pb-4">
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              {layoutMode === 'grid' ? (
+                 <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 p-1">
+                    {students.map(student => (
+                        <div key={student.id} className="relative">
+                           <InlineStudentCard 
+                             student={student} 
+                             behaviors={behaviors} 
+                             studentBehaviors={behaviorsHistory.filter(b => b.studentId === student.id)}
+                             onTrack={(b: any) => trackBehavior(student.id, b)}
+                             onUndo={() => undoLastBehavior(student.id)}
+                             compactMode={compactMode}
+                             isAbsent={absentStudents.has(student.id)}
+                           />
+                        </div>
+                    ))}
+                 </div>
+              ) : (
+                 <div className="relative w-full min-h-[800px] border border-gray-200 bg-slate-50 rounded-xl overflow-hidden shadow-inner" style={{ backgroundImage: 'radial-gradient(#e5e7eb 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
+                    {students.map((student, index) => {
+                        const x = student.x !== undefined ? student.x : (index % 5) * (compactMode ? 160 : 240) + 20;
+                        const y = student.y !== undefined ? student.y : Math.floor(index / 5) * (compactMode ? 80 : 120) + 20;
+                        return (
+                            <DraggableStudentCard
+                                key={student.id}
+                                student={student}
+                                x={x}
+                                y={y}
+                                behaviors={behaviors}
+                                studentBehaviors={behaviorsHistory.filter(b => b.studentId === student.id)}
+                                onTrack={(b: any) => trackBehavior(student.id, b)}
+                                onUndo={() => undoLastBehavior(student.id)}
+                                compactMode={compactMode}
+                                isAbsent={absentStudents.has(student.id)}
+                            />
+                        )
+                    })}
+                 </div>
+              )}
+          </DndContext>
       </div>
+      {showBehaviorManager && (
+         <BehaviorSettingsModal 
+           behaviors={behaviors} 
+           onSave={saveBehaviors} 
+           onClose={() => setShowBehaviorManager(false)} 
+         />
+      )}
     </div>
   );
+}
+
+function BehaviorSettingsModal({ behaviors, onSave, onClose }: any) {
+    const [localBehaviors, setLocalBehaviors] = useState(behaviors);
+    const [name, setName] = useState('');
+    const [points, setPoints] = useState(1);
+    const [type, setType] = useState('Positive');
+
+    const handleAdd = () => {
+       if (!name.trim()) return;
+       const newB = { id: crypto.randomUUID(), name, points: type === 'Positive' ? Math.abs(points) : type === 'Neutral' ? 0 : -Math.abs(points), type, isPrimary: true };
+       setLocalBehaviors([...localBehaviors, newB]);
+       setName('');
+    };
+
+    const handleRemove = (id: string) => {
+       setLocalBehaviors(localBehaviors.filter((b: any) => b.id !== id));
+    };
+
+    const togglePrimary = (id: string) => {
+       setLocalBehaviors(localBehaviors.map((b: any) => b.id === id ? { ...b, isPrimary: b.isPrimary === false ? true : false } : b));
+    };
+
+    return (
+       <div className="fixed right-4 top-16 z-50 p-4" onClick={onClose}>
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-100 p-4 w-80 max-h-[85vh] flex flex-col" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-sm text-slate-800 tracking-tight">Add New Behavior</h3>
+              <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded text-slate-400">
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="space-y-3 mb-4">
+               <Input placeholder="Behavior Name (e.g. On Task)" value={name} onChange={e => setName(e.target.value)} className="text-sm h-9" />
+               <div className="flex gap-2">
+                  <div className="flex-1">
+                     <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block tracking-wider">Type</label>
+                     <select value={type} onChange={e => setType(e.target.value)} className="w-full border rounded-lg h-9 px-2 text-sm bg-white border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="Positive">Positive</option>
+                        <option value="Negative">Negative</option>
+                        <option value="Neutral">Neutral</option>
+                     </select>
+                  </div>
+                  <div className="w-20">
+                     <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block tracking-wider">Points</label>
+                     <Input type="number" value={points} onChange={e => setPoints(parseInt(e.target.value) || 0)} disabled={type === 'Neutral'} className="h-9 text-sm" />
+                  </div>
+               </div>
+               
+               <button onClick={handleAdd} className="w-full py-2 bg-black text-white font-bold text-sm rounded-lg hover:bg-slate-800 transition-colors">
+                  Add Behavior
+               </button>
+            </div>
+
+            <div className="flex-1 overflow-hidden flex flex-col mt-2 border-t pt-4">
+               <label className="text-[10px] font-bold text-slate-400 uppercase mb-2 block tracking-wider">Current Behaviors</label>
+               <div className="overflow-y-auto space-y-1.5 flex-1 pr-1">
+                   {localBehaviors.map((b: any) => (
+                      <div key={b.id} className="flex flex-col border border-slate-100 rounded-lg bg-slate-50 overflow-hidden group">
+                        <div className="flex items-center justify-between p-2.5">
+                           <span className="text-sm font-medium text-slate-700 truncate min-w-0 pr-2">{b.name}</span>
+                           <div className="flex items-center gap-2 shrink-0">
+                              <span className={cn("text-xs font-bold text-right min-w-[20px]", b.type === 'Positive' ? "text-emerald-500" : b.type === 'Neutral' ? "text-slate-500" : "text-red-500")}>
+                                 {b.type === 'Positive' ? '+' : ''}{b.points}
+                              </span>
+                              <button 
+                                onClick={() => togglePrimary(b.id)}
+                                className={cn(
+                                   "px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider transition-colors min-w-[60px] text-center",
+                                   b.isPrimary !== false 
+                                      ? "bg-emerald-100 text-emerald-600 hover:bg-emerald-200" 
+                                      : "bg-slate-200 text-slate-500 hover:bg-slate-300"
+                                )}
+                              >
+                                 {b.isPrimary !== false ? 'Primary' : 'Addl'}
+                              </button>
+                              <button onClick={() => handleRemove(b.id)} className="text-slate-300 hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100 p-1">
+                                 <Trash2 size={14} />
+                              </button>
+                           </div>
+                        </div>
+                      </div>
+                   ))}
+               </div>
+            </div>
+            
+            <div className="pt-3 mt-2 border-t flex justify-end">
+               <button onClick={() => { onSave(localBehaviors); onClose(); }} className="px-4 py-2 bg-indigo-600 text-white font-bold text-sm rounded-lg hover:bg-indigo-700 transition-colors">
+                  Save Changes
+               </button>
+            </div>
+          </div>
+       </div>
+    );
+}
+
+function DraggableStudentCard({ student, x, y, behaviors, studentBehaviors, onTrack, onUndo, compactMode, isAbsent }: any) {
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: student.id });
+    const style: React.CSSProperties = {
+        transform: CSS.Translate.toString(transform),
+        zIndex: isDragging ? 50 : 1,
+        position: 'absolute',
+        left: x,
+        top: y,
+        width: compactMode ? '160px' : '220px',
+    };
+    return (
+        <div ref={setNodeRef} style={style} className={cn("relative shadow-sm rounded-lg hover:shadow-md transition-shadow", isDragging && "opacity-80 scale-105")}>
+            <InlineStudentCard 
+                student={student} 
+                behaviors={behaviors} 
+                studentBehaviors={studentBehaviors} 
+                onTrack={onTrack} 
+                onUndo={onUndo}
+                compactMode={compactMode} 
+                dragHandleProps={{...attributes, ...listeners}}
+                isAbsent={isAbsent} 
+            />
+        </div>
+    );
+}
+
+function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUndo, compactMode, dragHandleProps, isAbsent }: any) {
+    const getSumForBehavior = (bName: string) => {
+        return studentBehaviors
+            .filter((ev: any) => ev.category === bName)
+            .reduce((total: number, ev: any) => total + ev.points, 0);
+    };
+
+    const posBehaviors = behaviors.filter((b: any) => b.type === 'Positive');
+    const negBehaviors = behaviors.filter((b: any) => b.type === 'Negative');
+    const neutralBehaviors = behaviors.filter((b: any) => b.type === 'Neutral');
+    
+    // Sort so primary shows up first
+    posBehaviors.sort((a: any, b: any) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0));
+    negBehaviors.sort((a: any, b: any) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0));
+    neutralBehaviors.sort((a: any, b: any) => (b.isPrimary ? 1 : 0) - (a.isPrimary ? 1 : 0));
+    
+    const displayPos = studentBehaviors.filter((b: any) => b.type === 'Positive').reduce((sum: number, b: any) => sum + b.points, 0);
+    const displayNeg = studentBehaviors.filter((b: any) => b.type === 'Negative').reduce((sum: number, b: any) => sum + Math.abs(b.points), 0);
+    const displayNeu = studentBehaviors.filter((b: any) => b.type === 'Neutral').length;
+
+    const [showMore, setShowMore] = useState(false);
+    const hasMore = behaviors.some((b: any) => b.isPrimary === false);
+
+    return (
+        <div className={cn("bg-white rounded-lg border shadow-sm flex flex-col overflow-hidden border-slate-200", isAbsent && "opacity-60")}>
+            <div className="p-2 border-b border-gray-100 flex items-center justify-between bg-slate-50">
+                <div className="flex items-center gap-1 min-w-0 flex-1 pr-2">
+                    {dragHandleProps && (
+                        <div {...dragHandleProps} className="cursor-grab active:cursor-grabbing text-slate-400 p-0.5 hover:text-slate-600 transition-colors">
+                            <GripHorizontal size={12} />
+                        </div>
+                    )}
+                    <span className={cn("font-bold text-sm truncate text-slate-800", isAbsent && "line-through")}>{student.firstName} {student.lastName}</span>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                    <span className="text-[10px] sm:text-xs font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded shadow-sm" title="Positive">+{displayPos}</span>
+                    <span className="text-[10px] sm:text-xs font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded shadow-sm" title="Neutral">{displayNeu}</span>
+                    <span className="text-[10px] sm:text-xs font-bold text-red-500 bg-red-100 px-1.5 py-0.5 rounded shadow-sm" title="Negative">{-1 * displayNeg}</span>
+                </div>
+            </div>
+            {!compactMode && !isAbsent && (
+                <div className="p-1.5 flex-1 flex flex-col gap-1.5">
+                    {posBehaviors.length > 0 && (
+                       <div className="grid grid-cols-2 gap-1 px-0.5">
+                           {posBehaviors.filter((b: any) => b.isPrimary || showMore).map((b: any) => (
+                               <button key={b.id} onClick={() => onTrack(b)} className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px] font-medium py-1 px-1.5 rounded border transition-colors active:scale-95 truncate bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-100" title={b.name}>
+                                   <span className="truncate">{b.name}</span>
+                                   <span className="font-bold px-1 rounded bg-emerald-200/50">{getSumForBehavior(b.name) > 0 ? `+${getSumForBehavior(b.name)}` : getSumForBehavior(b.name)}</span>
+                               </button>
+                           ))}
+                       </div>
+                    )}
+                    {neutralBehaviors.length > 0 && (
+                       <div className="grid grid-cols-2 gap-1 px-0.5 mt-0.5">
+                           {neutralBehaviors.filter((b: any) => b.isPrimary || showMore).map((b: any) => (
+                               <button key={b.id} onClick={() => onTrack(b)} className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px] font-medium py-1 px-1.5 rounded border transition-colors active:scale-95 truncate bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200" title={b.name}>
+                                   <span className="truncate">{b.name}</span>
+                                   <span className="font-bold px-1 rounded bg-slate-200/50">{getSumForBehavior(b.name)}</span>
+                               </button>
+                           ))}
+                       </div>
+                    )}
+                    {negBehaviors.length > 0 && (
+                       <div className="grid grid-cols-2 gap-1 px-0.5 mt-0.5">
+                           {negBehaviors.filter((b: any) => b.isPrimary || showMore).map((b: any) => (
+                               <button key={b.id} onClick={() => onTrack(b)} className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px] font-medium py-1 px-1.5 rounded border transition-colors active:scale-95 truncate bg-red-50 hover:bg-red-100 text-red-700 border-red-100" title={b.name}>
+                                   <span className="truncate">{b.name}</span>
+                                   <span className="font-bold px-1 rounded bg-red-200/50">{getSumForBehavior(b.name)}</span>
+                               </button>
+                           ))}
+                       </div>
+                    )}
+                    
+                    <div className="flex items-center justify-between px-1 mt-1 border-t border-slate-100 pt-1">
+                       <button onClick={onUndo} disabled={studentBehaviors.length === 0} className="flex items-center gap-1 text-[10px] text-slate-500 hover:text-slate-700 font-medium disabled:opacity-50">
+                          <Undo2 size={12} />
+                          Undo
+                       </button>
+                       {hasMore && (
+                          <button onClick={() => setShowMore(!showMore)} className="text-[10px] text-slate-500 hover:text-indigo-600 font-medium uppercase tracking-wider">
+                             {showMore ? 'Less' : 'More'}
+                          </button>
+                       )}
+                    </div>
+                </div>
+            )}
+            {isAbsent && !compactMode && (
+               <div className="p-2 text-center text-xs font-bold text-slate-400 bg-slate-50 uppercase tracking-widest">
+                  Absent
+               </div>
+            )}
+        </div>
+    );
 }

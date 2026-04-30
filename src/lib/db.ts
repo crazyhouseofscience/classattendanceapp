@@ -8,6 +8,8 @@ export interface Student {
   notes: string;
   gradebookRank?: string;
   periods?: string[]; // Array of period names this student is assigned to
+  x?: number;
+  y?: number;
 }
 
 export interface PeriodConfig {

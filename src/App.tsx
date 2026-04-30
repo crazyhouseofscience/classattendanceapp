@@ -327,7 +327,7 @@ export default function App() {
           </TabsContent>
 
           <TabsContent value="behavior" className="pt-1">
-            <BehaviorTab />
+            <BehaviorTab activePeriodName={activePeriodName} activeScheduleId={activeScheduleId} />
           </TabsContent>
         </Tabs>
       </main>
