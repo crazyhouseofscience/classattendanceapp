@@ -30,6 +30,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
   const [lateStudents, setLateStudents] = useState<Set<string>>(new Set());
   const [showOnlyActive, setShowOnlyActive] = useState(false);
   const [sortBy, setSortBy] = useState<'lastName' | 'points'>('lastName');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<Student | null>(null);
   const [newComment, setNewComment] = useState('');
   const [layoutMode, setLayoutMode] = useState<'grid' | 'freeform'>('grid');
@@ -59,7 +60,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
 
   useEffect(() => {
     loadData();
-  }, [activePeriodName, showOnlyActive]);
+  }, [activePeriodName, showOnlyActive, sortBy, sortOrder]);
 
   const loadData = async () => {
     const db = await getDB();
@@ -78,7 +79,21 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
     if (showOnlyActive) {
        filteredStudents = filteredStudents.filter(s => todayBehaviors.some(b => b.studentId === s.id));
     }
-    setStudents(filteredStudents.sort((a, b) => a.lastName.localeCompare(b.lastName)));
+    
+    // Sort students
+    filteredStudents.sort((a, b) => {
+        if (sortBy === 'lastName') {
+            return sortOrder === 'asc' 
+                ? a.lastName.localeCompare(b.lastName) 
+                : b.lastName.localeCompare(a.lastName);
+        } else {
+            const aPoints = todayBehaviors.filter(beh => beh.studentId === a.id).reduce((sum, beh) => sum + beh.points, 0);
+            const bPoints = todayBehaviors.filter(beh => beh.studentId === b.id).reduce((sum, beh) => sum + beh.points, 0);
+            return sortOrder === 'asc' ? aPoints - bPoints : bPoints - aPoints;
+        }
+    });
+
+    setStudents(filteredStudents);
     
     const settingsStore = db.transaction('settings').store;
     const customBehaviors = await settingsStore.get('custom_behaviors');
@@ -328,6 +343,34 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
             >
                 <Settings size={14} />
                 Behaviors
+            </button>
+
+            <button
+                onClick={() => {
+                    if (sortBy === 'lastName') {
+                        setSortBy('points');
+                        setSortOrder('desc');
+                    } else {
+                        setSortBy('lastName');
+                        setSortOrder('asc');
+                    }
+                }}
+                className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shadow-sm border",
+                    "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                )}
+            >
+                Sort: {sortBy === 'lastName' ? 'Name' : 'Points'} ({sortOrder === 'asc' ? 'A-Z' : 'Desc'})
+            </button>
+
+            <button
+                onClick={() => setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc')}
+                className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shadow-sm border",
+                    "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                )}
+            >
+                {sortOrder === 'asc' ? 'Ascending' : 'Descending'}
             </button>
 
             <button
