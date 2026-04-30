@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDB, Student, BehaviorEvent } from '../lib/db';
+import { getDB, Student, BehaviorEvent, ScanEvent } from '../lib/db';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { format } from 'date-fns';
@@ -116,6 +116,23 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
         notes: comment
     };
     await db.put('behaviors', newBehavior);
+    
+    // Link to movement if it's Bathroom, Nurse, or Office
+    if (['Bathroom', 'Nurse', 'Office'].includes(b.name) && activeScheduleId) {
+        const newScan: ScanEvent = {
+            id: `scan_${now}_${Math.random().toString(36).substring(2)}`,
+            studentId,
+            timestamp: now,
+            date: format(now, 'yyyy-MM-dd'),
+            periodName: activePeriodName || '',
+            scheduleId: activeScheduleId,
+            status: 'success',
+            movementType: b.name as any,
+            notes: comment
+        };
+        await db.put('scans', newScan);
+    }
+
     toast.success(`Logged ${b.name} (${b.points > 0 ? '+' : ''}${b.points})`);
     loadData();
   };
