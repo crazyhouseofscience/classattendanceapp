@@ -591,6 +591,7 @@ function DraggableStudentCard({ student, x, y, behaviors, studentBehaviors, onTr
 */
 
 function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUndo, compactMode, dragHandleProps, isAbsent, isLate }: any) {
+    const [comment, setComment] = useState('');
     const getSumForBehavior = (bName: string) => {
         return studentBehaviors
             .filter((ev: any) => ev.category === bName)
@@ -625,7 +626,11 @@ function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUn
                             <GripHorizontal size={12} />
                         </div>
                     )}
-                    <span className={cn("font-bold text-sm truncate text-slate-800", (isAbsent || isLate) && "line-through")}>{student.firstName} {student.lastName}</span>
+                    <span className={cn(
+                        "font-bold text-sm truncate text-slate-800",
+                        isAbsent && "text-red-600 line-through",
+                        isLate && "text-amber-600"
+                    )}>{student.firstName} {student.lastName}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
                     {isAbsent && <span className="text-[10px] font-bold text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded shadow-sm">Absent</span>}
@@ -638,12 +643,20 @@ function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUn
             
             {/* Quick Actions Strip */}
             {!isAbsent && (
-                <div className="flex gap-1 p-1.5 border-b border-gray-100 bg-white">
-                    {quickActions.map(b => (
-                        <button key={b.id} onClick={() => onTrack(b)} className={cn("flex-1 text-[10px] py-1 px-1 rounded-sm border font-medium transition-colors", b.type === 'Positive' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : b.type === 'Negative' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-slate-50 text-slate-700 border-slate-200')}>
-                            {b.name}
-                        </button>
-                    ))}
+                <div className="flex flex-col gap-1 p-1.5 border-b border-gray-100 bg-white">
+                    <Input 
+                        placeholder="Add note..."
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        className="text-[10px] h-7"
+                    />
+                    <div className="flex gap-1">
+                        {quickActions.map(b => (
+                            <button key={b.id} onClick={() => {onTrack(b, comment); setComment('');}} className={cn("flex-1 text-[10px] py-1 px-1 rounded-sm border font-medium transition-colors", b.type === 'Positive' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : b.type === 'Negative' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-slate-50 text-slate-700 border-slate-200')}>
+                                {b.name}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             )}
 
@@ -652,7 +665,7 @@ function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUn
                     {posBehaviors.length > 0 && (
                        <div className="grid grid-cols-2 gap-1 px-0.5">
                            {posBehaviors.filter((b: any) => b.isPrimary || showMore).map((b: any) => (
-                               <button key={b.id} onClick={() => onTrack(b)} className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px] font-medium py-1 px-1.5 rounded border transition-colors active:scale-95 truncate bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-100" title={b.name}>
+                               <button key={b.id} onClick={() => {onTrack(b, comment); setComment('');}} className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px] font-medium py-1 px-1.5 rounded border transition-colors active:scale-95 truncate bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border-emerald-100" title={b.name}>
                                    <span className="truncate">{b.name}</span>
                                    <span className="font-bold px-1 rounded bg-emerald-200/50">{getSumForBehavior(b.name) > 0 ? `+${getSumForBehavior(b.name)}` : getSumForBehavior(b.name)}</span>
                                </button>
@@ -662,7 +675,7 @@ function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUn
                     {neutralBehaviors.length > 0 && (
                        <div className="grid grid-cols-2 gap-1 px-0.5 mt-0.5">
                            {neutralBehaviors.filter((b: any) => b.isPrimary || showMore).map((b: any) => (
-                               <button key={b.id} onClick={() => onTrack(b)} className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px] font-medium py-1 px-1.5 rounded border transition-colors active:scale-95 truncate bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200" title={b.name}>
+                               <button key={b.id} onClick={() => {onTrack(b, comment); setComment('');}} className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px] font-medium py-1 px-1.5 rounded border transition-colors active:scale-95 truncate bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200" title={b.name}>
                                    <span className="truncate">{b.name}</span>
                                    <span className="font-bold px-1 rounded bg-slate-200/50">{getSumForBehavior(b.name)}</span>
                                </button>
@@ -672,7 +685,7 @@ function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUn
                     {negBehaviors.length > 0 && (
                        <div className="grid grid-cols-2 gap-1 px-0.5 mt-0.5">
                            {negBehaviors.filter((b: any) => b.isPrimary || showMore).map((b: any) => (
-                               <button key={b.id} onClick={() => onTrack(b)} className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px] font-medium py-1 px-1.5 rounded border transition-colors active:scale-95 truncate bg-red-50 hover:bg-red-100 text-red-700 border-red-100" title={b.name}>
+                               <button key={b.id} onClick={() => {onTrack(b, comment); setComment('');}} className="flex items-center justify-between gap-1 text-[9px] sm:text-[10px] font-medium py-1 px-1.5 rounded border transition-colors active:scale-95 truncate bg-red-50 hover:bg-red-100 text-red-700 border-red-100" title={b.name}>
                                    <span className="truncate">{b.name}</span>
                                    <span className="font-bold px-1 rounded bg-red-200/50">{getSumForBehavior(b.name)}</span>
                                </button>
