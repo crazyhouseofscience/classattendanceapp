@@ -111,10 +111,12 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
     const lateIds = new Set<string>();
     
     filteredStudents.forEach(s => {
-       const sScans = todayScans.filter(scan => scan.studentId === s.id);
+       const sScans = todayScans.filter(scan => scan.studentId === s.id && scan.periodName === activePeriodName);
        
        const manualAbsent = sScans.some(scan => ((scan.manualStatus as string) || '') === 'Absent' && (!scan.movementType || scan.movementType === 'Attendance'));
-       if (manualAbsent) {
+       const hasAttendanceScan = sScans.some(scan => (!scan.movementType || scan.movementType === 'Attendance'));
+       
+       if (manualAbsent || !hasAttendanceScan) {
           absentIds.add(s.id);
        }
        

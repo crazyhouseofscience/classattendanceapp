@@ -291,9 +291,9 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     const student = await db.get('students', code);
     
     const now = Date.now();
-    const dateStr = format(now, 'yyyy-MM-dd');
-    
-    const studentScans = scans.filter(s => s.studentId === code);
+    const todayStr = format(now, 'yyyy-MM-dd');
+    const todayScans = await db.transaction('scans').store.index('by-date').getAll(todayStr);
+    const studentScans = todayScans.filter(s => s.studentId === code && s.periodName === effectivePeriodName);
     const isFirstScan = studentScans.length === 0;
     
     let manualStatus: 'Late' | undefined = undefined;
@@ -324,7 +324,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
         id: `${code}_${now}`,
         studentId: code,
         timestamp: now,
-        date: dateStr,
+        date: todayStr,
         periodName: effectivePeriodName,
         scheduleId: effectiveScheduleId,
         status: status === 'success' || status === 'not_in_period' ? 'success' : 'unknown_barcode',
