@@ -32,6 +32,7 @@ export interface ScanEvent {
   scheduleId: string;
   status: 'success' | 'unknown_barcode';
   isExcused?: boolean;
+  hasNoPass?: boolean;
   manualStatus?: 'Present' | 'Late' | 'Absent';
   notes?: string;
   movementType?: 'Attendance' | 'Bathroom' | 'Nurse' | 'Office' | 'Guidance' | 'Returned';

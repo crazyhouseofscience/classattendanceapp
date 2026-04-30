@@ -100,7 +100,7 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
       return;
     }
 
-    const headers = ['Timestamp', 'Date', 'Period', 'Barcode/ID', 'First Name', 'Last Name', 'Status', 'Reason/Notes'];
+    const headers = ['Timestamp', 'Date', 'Period', 'Barcode/ID', 'First Name', 'Last Name', 'Status', 'Pass', 'Reason/Notes'];
     const rows = scans.map(s => [
       format(new Date(s.timestamp), 'h:mm:ss a'),
       s.date,
@@ -109,6 +109,7 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
       s.studentInfo?.firstName || 'Unknown',
       s.studentInfo?.lastName || 'Unknown',
       getScanStatus(s).status,
+      s.isExcused ? 'Pass' : s.hasNoPass ? 'No Pass' : '',
       (s.notes || '').replace(/,/g, ';') // Avoid CSV issues with commas
     ]);
 
@@ -187,10 +188,14 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
                       : <span className="text-red-500 italic">Unknown</span>}
                   </TableCell>
                   <TableCell>
+                    <div className="flex items-center gap-2">
                     {(() => {
                         const { status, color } = getScanStatus(s);
                         return <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase ${color}`}>{status}</span>;
                     })()}
+                    {s.isExcused && <span className="px-2 py-1 rounded-full text-[10px] font-black uppercase bg-blue-100 text-blue-800">PASS</span>}
+                    {s.hasNoPass && <span className="px-2 py-1 rounded-full text-[10px] font-black uppercase bg-red-100 text-red-800">NO PASS</span>}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))

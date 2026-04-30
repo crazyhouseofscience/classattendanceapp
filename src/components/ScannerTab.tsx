@@ -78,7 +78,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
      if (!scan) return { status: 'Absent', text: 'Absent', time: null, scanId: null };
      
      if (scan.manualStatus) {
-        return { status: scan.manualStatus as any, text: scan.manualStatus, time: scan.timestamp, excused: !!scan.isExcused, scanId: scan.id };
+        return { status: scan.manualStatus as any, text: scan.manualStatus, time: scan.timestamp, excused: !!scan.isExcused, noPass: !!scan.hasNoPass, scanId: scan.id };
      }
 
      const effectiveStartTime = manualStartTime || currentPeriodConfig?.startTime;
@@ -94,11 +94,11 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
          const scanMinutes = scanH * 60 + scanM;
 
          if (scanMinutes > cutoffMinutes) {
-             return { status: 'Late', text: 'Late', time: scan.timestamp, excused: !!scan.isExcused, scanId: scan.id };
+             return { status: 'Late', text: 'Late', time: scan.timestamp, excused: !!scan.isExcused, noPass: !!scan.hasNoPass, scanId: scan.id };
          }
      }
      
-     return { status: 'OnTime', text: 'On Time', time: scan.timestamp, excused: !!scan.isExcused, scanId: scan.id };
+     return { status: 'OnTime', text: 'On Time', time: scan.timestamp, excused: !!scan.isExcused, noPass: !!scan.hasNoPass, scanId: scan.id };
   };
 
   const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status' | 'rank'>('lastName');
@@ -378,6 +378,17 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     
     const db = await getDB();
     const updated = { ...scan, isExcused: !scan.isExcused };
+    await db.put('scans', updated);
+    await loadData();
+  };
+
+  const toggleNoPass = async (studentToToggle: Student) => {
+    const studentScans = scans.filter(s => s.studentId === studentToToggle.id).sort((a,b) => a.timestamp - b.timestamp);
+    const scan = studentScans[0];
+    if (!scan) return;
+    
+    const db = await getDB();
+    const updated = { ...scan, hasNoPass: !scan.hasNoPass };
     await db.put('scans', updated);
     await loadData();
   };
@@ -734,10 +745,13 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                                 })
                                              )}
                                           </div>
-                                          <Button variant="ghost" size="sm" onClick={() => toggleExcused(student)} className={`h-6 px-4 text-xs font-bold uppercase transition-colors ${statusInfo.excused ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-slate-600'}`}>
+                                          <Button variant="ghost" size="sm" onClick={() => toggleExcused(student)} className={`h-6 px-3 text-xs font-bold uppercase transition-colors ${statusInfo.excused ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-slate-600'}`}>
                                              {statusInfo.excused ? 'EXC' : 'PASS'}
                                           </Button>
-                                          <Button variant="ghost" size="sm" onClick={() => manualMark(student, 'Absent')} className="h-6 w-6 p-0 text-sm text-red-200 hover:text-red-500 hover:bg-red-50 transition-colors uppercase font-black">X</Button>
+                                          <Button variant="ghost" size="sm" onClick={() => toggleNoPass(student)} className={`h-6 px-3 text-[10px] tracking-tight font-black uppercase transition-colors ${statusInfo.noPass ? 'bg-red-600 text-white' : 'text-slate-300 hover:text-slate-600'}`}>
+                                             NO PASS
+                                          </Button>
+                                          <Button variant="ghost" size="sm" onClick={() => manualMark(student, 'Absent')} className="h-6 w-6 p-0 text-sm text-red-200 hover:text-red-500 hover:bg-red-50 transition-colors uppercase font-black ml-1">X</Button>
                                        </div>
                                     )}
                                   </div>
@@ -749,6 +763,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                     {statusInfo.status === 'Present' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase">PRESENT</span>}
                                     {statusInfo.status === 'Absent' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-slate-50 text-slate-300 border border-slate-100 uppercase">ABSENT</span>}
                                     {statusInfo.excused && <span className="px-2.5 py-1 rounded-[2px] text-[10px] font-black bg-blue-600 text-white shadow-sm uppercase tracking-tighter">Pass</span>}
+                                    {statusInfo.noPass && <span className="px-2.5 py-1 rounded-[2px] text-[10px] font-black bg-red-600 text-white shadow-sm uppercase tracking-tighter">No Pass</span>}
                                     {statusInfo.time && (
                                        <div className="flex items-center gap-1 group/time ml-2">
                                           <span className="text-base text-slate-400 font-mono opacity-70 leading-none whitespace-nowrap">{format(new Date(statusInfo.time), 'h:mm a')}</span>
