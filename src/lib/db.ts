@@ -32,7 +32,7 @@ export interface ScanEvent {
   date: string; // YYYY-MM-DD
   periodName: string;
   scheduleId: string;
-  status: 'success' | 'unknown_barcode';
+  status: 'success' | 'unknown_barcode' | 'not_in_period';
   isExcused?: boolean;
   hasNoPass?: boolean;
   manualStatus?: 'Present' | 'Late' | 'Absent';

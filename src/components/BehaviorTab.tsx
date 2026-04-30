@@ -32,6 +32,9 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
   const [sortBy, setSortBy] = useState<'lastName' | 'points'>('lastName');
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<Student | null>(null);
   const [newComment, setNewComment] = useState('');
+  const [layoutMode, setLayoutMode] = useState<'grid' | 'freeform'>('grid');
+  const [compactMode, setCompactMode] = useState(false);
+  const [showBehaviorManager, setShowBehaviorManager] = useState(false);
 
   // ...
 
@@ -93,7 +96,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
        const isAbsent = latestScan && (latestScan.manualStatus === 'Absent' || latestScan.manualStatus === 'Absent');
        // Real app logic for attendance might be more complex, but let's check manualStatus or lack thereof
        // Wait, scanner tab has a specific way it calculates. Let's see if any manualStatus is Absent.
-       const manualAbsent = sScans.some(scan => scan.manualStatus === 'Absent' && (!scan.movementType || scan.movementType === 'Attendance'));
+       const manualAbsent = sScans.some(scan => ((scan.manualStatus as string) || '') === 'Absent' && (!scan.movementType || scan.movementType === 'Attendance'));
        if (manualAbsent) {
           absentIds.add(s.id);
        }
@@ -545,7 +548,7 @@ function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUn
     };
 
     // Define common quick actions
-    const quickActions = behaviors.filter(b => ['On Task', 'Off Task', 'Bathroom'].includes(b.name));
+    const quickActions = (behaviors || []).filter(b => ['On Task', 'Off Task', 'Bathroom'].includes(b.name));
 
     const posBehaviors = behaviors.filter((b: any) => b.type === 'Positive');
     const negBehaviors = behaviors.filter((b: any) => b.type === 'Negative');
