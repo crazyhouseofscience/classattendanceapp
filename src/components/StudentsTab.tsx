@@ -51,6 +51,23 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
     }
     const db = await getDB();
     if (originalEditId && originalEditId !== editingStudent.id) {
+       // Update Scans
+       const scanStore = db.transaction('scans', 'readwrite').store;
+       const scanIndex = scanStore.index('by-student');
+       const scansToUpdate = await scanIndex.getAll(originalEditId);
+       for (const scan of scansToUpdate) {
+         await scanStore.put({ ...scan, studentId: editingStudent.id! });
+       }
+       
+       // Update Behaviors
+       const behaviorStore = db.transaction('behaviors', 'readwrite').store;
+       const behaviorIndex = behaviorStore.index('by-student');
+       const behaviorsToUpdate = await behaviorIndex.getAll(originalEditId);
+       for (const behavior of behaviorsToUpdate) {
+         await behaviorStore.put({ ...behavior, studentId: editingStudent.id! });
+       }
+
+       // Delete old student
        await db.delete('students', originalEditId);
     }
     await db.put('students', editingStudent as Student);

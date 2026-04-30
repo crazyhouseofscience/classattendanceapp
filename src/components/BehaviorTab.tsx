@@ -36,6 +36,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
   const [layoutMode, setLayoutMode] = useState<'grid' | 'freeform'>('grid');
   const [compactMode, setCompactMode] = useState(false);
   const [showBehaviorManager, setShowBehaviorManager] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // ...
 
@@ -80,6 +81,12 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
        filteredStudents = filteredStudents.filter(s => todayBehaviors.some(b => b.studentId === s.id));
     }
     
+    if (searchQuery) {
+       filteredStudents = filteredStudents.filter(s => 
+           `${s.firstName} ${s.lastName}`.toLowerCase().includes(searchQuery.toLowerCase())
+       );
+    }
+    
     // Sort students
     filteredStudents.sort((a, b) => {
         if (sortBy === 'lastName') {
@@ -112,7 +119,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
     filteredStudents.forEach(s => {
        const sScans = todayScans.filter(scan => scan.studentId === s.id);
        const latestScan = sScans[sScans.length - 1]; // naive
-       const isAbsent = latestScan && (latestScan.manualStatus === 'Absent' || latestScan.manualStatus === 'Absent');
+       const isAbsent = latestScan && ((latestScan.manualStatus as any) === 'Absent');
        // Real app logic for attendance might be more complex, but let's check manualStatus or lack thereof
        // Wait, scanner tab has a specific way it calculates. Let's see if any manualStatus is Absent.
        const manualAbsent = sScans.some(scan => ((scan.manualStatus as string) || '') === 'Absent' && (!scan.movementType || scan.movementType === 'Attendance'));
@@ -315,6 +322,12 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
         </div>
 
         <div className="flex items-center gap-2">
+            <Input 
+                placeholder="Search students..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-48 text-xs h-8"
+            />
             <button
                 onClick={exportBackup}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium bg-white text-gray-600 border border-gray-200 hover:bg-gray-50 shadow-sm transition-all"
