@@ -292,6 +292,25 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     
     const now = Date.now();
     const dateStr = format(now, 'yyyy-MM-dd');
+    
+    const studentScans = scans.filter(s => s.studentId === code);
+    const isFirstScan = studentScans.length === 0;
+    
+    let manualStatus: 'Late' | undefined = undefined;
+
+    // Attendance calculation logic
+    const effectiveStartTime = manualStartTime || currentPeriodConfig?.startTime;
+    if (isFirstScan && effectiveStartTime) {
+         const [baseH, baseM] = effectiveStartTime.split(':').map(Number);
+         const baseMinutes = baseH * 60 + baseM;
+         const cutoffMinutes = baseMinutes + gracePeriod;
+         const scanDate = new Date(now);
+         const scanMinutes = scanDate.getHours() * 60 + scanDate.getMinutes();
+
+         if (scanMinutes > cutoffMinutes) {
+             manualStatus = 'Late';
+         }
+    }
 
     let status: 'success' | 'unknown_barcode' | 'not_in_period' = 'success';
     
@@ -301,19 +320,17 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
        status = 'not_in_period';
     }
     
-    const studentScans = scans.filter(s => s.studentId === code);
-    const isFirstScan = studentScans.length === 0;
-
     const scanEvent: ScanEvent = {
-      id: `${code}_${now}`,
-      studentId: code,
-      timestamp: now,
-      date: dateStr,
-      periodName: effectivePeriodName,
-      scheduleId: effectiveScheduleId,
-      status: status === 'success' || status === 'not_in_period' ? 'success' : 'unknown_barcode',
-      notes: purpose || undefined,
-      movementType: isFirstScan ? 'Attendance' : (purpose as any || 'Returned')
+        id: `${code}_${now}`,
+        studentId: code,
+        timestamp: now,
+        date: dateStr,
+        periodName: effectivePeriodName,
+        scheduleId: effectiveScheduleId,
+        status: status === 'success' || status === 'not_in_period' ? 'success' : 'unknown_barcode',
+        notes: purpose || undefined,
+        movementType: isFirstScan ? 'Attendance' : (purpose as any || 'Returned'),
+        manualStatus
     };
 
     await db.put('scans', scanEvent);
