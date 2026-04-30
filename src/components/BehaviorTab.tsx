@@ -7,7 +7,7 @@ import { toast } from 'sonner';
 import { DndContext, closestCenter, DragEndEvent, useDraggable, useSensors, useSensor, PointerSensor } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import { Layout, Users as UsersIcon, Undo2, GripHorizontal, Settings, X, Plus, Trash2, Upload } from 'lucide-react';
-import { cn } from '../lib/utils';
+import { cn, isStudentInPeriod } from '../lib/utils';
 
 const DEFAULT_BEHAVIORS = [
   { id: 'b1', name: 'On Task', points: 1, type: 'Positive' },
@@ -46,7 +46,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
     
     let filteredStudents = allStudents;
     if (activePeriodName && activePeriodName !== 'all') {
-       filteredStudents = allStudents.filter(s => s.periods && s.periods.includes(activePeriodName));
+       filteredStudents = allStudents.filter(s => isStudentInPeriod(s, activePeriodName));
     }
     setStudents(filteredStudents.sort((a, b) => a.lastName.localeCompare(b.lastName)));
 
