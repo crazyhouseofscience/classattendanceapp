@@ -15,7 +15,11 @@ const DEFAULT_BEHAVIORS = [
   { id: 'b3', name: 'Great Answer', points: 1, type: 'Positive' },
   { id: 'b4', name: 'Off Task', points: -1, type: 'Negative' },
   { id: 'b5', name: 'Disrespect', points: -2, type: 'Negative' },
-  { id: 'b6', name: 'Unprepared', points: -1, type: 'Negative' }
+  { id: 'b6', name: 'Unprepared', points: -1, type: 'Negative' },
+  { id: 'b7', name: 'Late', points: -1, type: 'Negative' },
+  { id: 'b8', name: 'Bathroom', points: 0, type: 'Neutral' },
+  { id: 'b9', name: 'Nurse', points: 0, type: 'Neutral' },
+  { id: 'b10', name: 'Office', points: 0, type: 'Neutral' }
 ];
 
 export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeriodName?: string | null, activeScheduleId?: string | null }) {
@@ -23,9 +27,23 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
   const [behaviorsHistory, setBehaviorsHistory] = useState<BehaviorEvent[]>([]);
   const [behaviors, setBehaviors] = useState(DEFAULT_BEHAVIORS);
   const [absentStudents, setAbsentStudents] = useState<Set<string>>(new Set());
-  const [layoutMode, setLayoutMode] = useState<'grid' | 'freeform'>('grid');
-  const [compactMode, setCompactMode] = useState(false);
-  const [showBehaviorManager, setShowBehaviorManager] = useState(false);
+  const [lateStudents, setLateStudents] = useState<Set<string>>(new Set());
+  const [showOnlyActive, setShowOnlyActive] = useState(false);
+  const [sortBy, setSortBy] = useState<'lastName' | 'points'>('lastName');
+  const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<Student | null>(null);
+  const [newComment, setNewComment] = useState('');
+
+  // ...
+
+  const toggleStudentLate = (studentId: string) => {
+    const newLate = new Set(lateStudents);
+    if (newLate.has(studentId)) {
+        newLate.delete(studentId);
+    } else {
+        newLate.add(studentId);
+    }
+    setLateStudents(newLate);
+  };
 
   // Setup sensors for DND kit to ensure clicks inside draggable cards aren't blocked easily
   const sensors = useSensors(
@@ -38,7 +56,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
 
   useEffect(() => {
     loadData();
-  }, [activePeriodName]);
+  }, [activePeriodName, showOnlyActive]);
 
   const loadData = async () => {
     const db = await getDB();
@@ -48,12 +66,16 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
     if (activePeriodName && activePeriodName !== 'all') {
        filteredStudents = allStudents.filter(s => isStudentInPeriod(s, activePeriodName));
     }
-    setStudents(filteredStudents.sort((a, b) => a.lastName.localeCompare(b.lastName)));
-
+    
     const todayStr = format(new Date(), 'yyyy-MM-dd');
     const index = db.transaction('behaviors').store.index('by-date');
     const todayBehaviors = await index.getAll(todayStr);
     setBehaviorsHistory(todayBehaviors);
+
+    if (showOnlyActive) {
+       filteredStudents = filteredStudents.filter(s => todayBehaviors.some(b => b.studentId === s.id));
+    }
+    setStudents(filteredStudents.sort((a, b) => a.lastName.localeCompare(b.lastName)));
     
     const settingsStore = db.transaction('settings').store;
     const customBehaviors = await settingsStore.get('custom_behaviors');
@@ -80,7 +102,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
   };
 
 
-  const trackBehavior = async (studentId: string, b: any) => {
+  const trackBehavior = async (studentId: string, b: any, comment?: string) => {
     const db = await getDB();
     const now = Date.now();
     const newBehavior: BehaviorEvent = {
@@ -90,7 +112,8 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
         date: format(now, 'yyyy-MM-dd'),
         type: b.type as any,
         category: b.name,
-        points: b.points
+        points: b.points,
+        notes: comment
     };
     await db.put('behaviors', newBehavior);
     toast.success(`Logged ${b.name} (${b.points > 0 ? '+' : ''}${b.points})`);
@@ -288,6 +311,16 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
             </button>
 
             <button
+                onClick={() => setShowOnlyActive(!showOnlyActive)}
+                className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shadow-sm border",
+                    showOnlyActive ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                )}
+            >
+                {showOnlyActive ? "Show All" : "Show Only Active"}
+            </button>
+
+            <button
                 onClick={() => setCompactMode(!compactMode)}
                 className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shadow-sm border",
@@ -312,7 +345,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
 
       <div className="flex-1 overflow-y-auto pb-4">
           <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-              {layoutMode === 'grid' ? (
+               {layoutMode === 'grid' ? (
                  <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 p-1">
                     {students.map(student => (
                         <div key={student.id} className="relative">
@@ -323,13 +356,13 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
                              onTrack={(b: any) => trackBehavior(student.id, b)}
                              onUndo={() => undoLastBehavior(student.id)}
                              compactMode={compactMode}
-                             isAbsent={absentStudents.has(student.id)}
+                             isLate={lateStudents.has(student.id)}
                            />
                         </div>
                     ))}
                  </div>
               ) : (
-                 <div className="relative w-full min-h-[800px] border border-gray-200 bg-slate-50 rounded-xl overflow-hidden shadow-inner" style={{ backgroundImage: 'radial-gradient(#e5e7eb 1px, transparent 1px)', backgroundSize: '20px 20px' }}>
+                 <div className="relative w-full min-h-[800px] border border-gray-200 bg-slate-50 rounded-xl overflow-hidden shadow-inner">
                     {students.map((student, index) => {
                         const x = student.x !== undefined ? student.x : (index % 5) * (compactMode ? 160 : 240) + 20;
                         const y = student.y !== undefined ? student.y : Math.floor(index / 5) * (compactMode ? 80 : 120) + 20;
@@ -345,6 +378,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
                                 onUndo={() => undoLastBehavior(student.id)}
                                 compactMode={compactMode}
                                 isAbsent={absentStudents.has(student.id)}
+                                isLate={lateStudents.has(student.id)}
                             />
                         )
                     })}
@@ -458,6 +492,7 @@ function BehaviorSettingsModal({ behaviors, onSave, onClose }: any) {
     );
 }
 
+/*
 function DraggableStudentCard({ student, x, y, behaviors, studentBehaviors, onTrack, onUndo, compactMode, isAbsent }: any) {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: student.id });
     const style: React.CSSProperties = {
@@ -483,8 +518,9 @@ function DraggableStudentCard({ student, x, y, behaviors, studentBehaviors, onTr
         </div>
     );
 }
+*/
 
-function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUndo, compactMode, dragHandleProps, isAbsent }: any) {
+function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUndo, compactMode, dragHandleProps, isAbsent, isLate }: any) {
     const getSumForBehavior = (bName: string) => {
         return studentBehaviors
             .filter((ev: any) => ev.category === bName)
@@ -516,9 +552,11 @@ function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUn
                             <GripHorizontal size={12} />
                         </div>
                     )}
-                    <span className={cn("font-bold text-sm truncate text-slate-800", isAbsent && "line-through")}>{student.firstName} {student.lastName}</span>
+                    <span className={cn("font-bold text-sm truncate text-slate-800", (isAbsent || isLate) && "line-through")}>{student.firstName} {student.lastName}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
+                    {isAbsent && <span className="text-[10px] font-bold text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded shadow-sm">Absent</span>}
+                    {isLate && <span className="text-[10px] font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded shadow-sm">Late</span>}
                     <span className="text-[10px] sm:text-xs font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded shadow-sm" title="Positive">+{displayPos}</span>
                     <span className="text-[10px] sm:text-xs font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded shadow-sm" title="Neutral">{displayNeu}</span>
                     <span className="text-[10px] sm:text-xs font-bold text-red-500 bg-red-100 px-1.5 py-0.5 rounded shadow-sm" title="Negative">{-1 * displayNeg}</span>
@@ -575,6 +613,33 @@ function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUn
                   Absent
                </div>
             )}
+        </div>
+    );
+}
+
+function DraggableStudentCard({ student, x, y, behaviors, studentBehaviors, onTrack, onUndo, compactMode, isAbsent, isLate }: any) {
+    const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: student.id });
+    const style: React.CSSProperties = {
+        transform: CSS.Translate.toString(transform),
+        zIndex: isDragging ? 50 : 1,
+        position: 'absolute',
+        left: x,
+        top: y,
+        width: compactMode ? '160px' : '220px',
+    };
+    return (
+        <div ref={setNodeRef} style={style} className={cn("relative shadow-sm rounded-lg hover:shadow-md transition-shadow", isDragging && "opacity-80 scale-105")}>
+            <InlineStudentCard 
+                student={student} 
+                behaviors={behaviors} 
+                studentBehaviors={studentBehaviors} 
+                onTrack={onTrack} 
+                onUndo={onUndo}
+                compactMode={compactMode} 
+                dragHandleProps={{...attributes, ...listeners}}
+                isAbsent={isAbsent} 
+                isLate={isLate}
+            />
         </div>
     );
 }
