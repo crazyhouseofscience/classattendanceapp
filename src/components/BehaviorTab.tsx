@@ -40,15 +40,6 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
 
   // ...
 
-  const toggleStudentLate = (studentId: string) => {
-    const newLate = new Set(lateStudents);
-    if (newLate.has(studentId)) {
-        newLate.delete(studentId);
-    } else {
-        newLate.add(studentId);
-    }
-    setLateStudents(newLate);
-  };
 
   // Setup sensors for DND kit to ensure clicks inside draggable cards aren't blocked easily
   const sensors = useSensors(
@@ -61,6 +52,8 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
 
   useEffect(() => {
     loadData();
+    const interval = setInterval(loadData, 5000);
+    return () => clearInterval(interval);
   }, [activePeriodName, showOnlyActive, sortBy, sortOrder]);
 
   const loadData = async () => {
@@ -651,7 +644,7 @@ function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUn
                     )}>{student.firstName} {student.lastName}</span>
                 </div>
                 <div className="flex items-center gap-1 shrink-0">
-                    {isAbsent && <span className="text-[10px] font-bold text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded shadow-sm">Absent</span>}
+                    {isAbsent && <span className="text-[10px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded shadow-sm">Absent</span>}
                     {isLate && <span className="text-[10px] font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded shadow-sm">Late</span>}
                     <span className="text-[10px] sm:text-xs font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded shadow-sm" title="Positive">+{displayPos}</span>
                     <span className="text-[10px] sm:text-xs font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded shadow-sm" title="Neutral">{displayNeu}</span>
