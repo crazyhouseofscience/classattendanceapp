@@ -16,10 +16,11 @@ interface ReportsTabProps {
 export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule }: ReportsTabProps) {
   const [scans, setScans] = useState<(ScanEvent & { studentInfo?: Student })[]>([]);
   const [filterDate, setFilterDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [sortBy, setSortBy] = useState<'time' | 'firstName' | 'lastName' | 'rank'>('time');
 
   useEffect(() => {
     loadScans();
-  }, [filterDate, activePeriodName]);
+  }, [filterDate, activePeriodName, sortBy]);
 
   async function loadScans() {
     const db = await getDB();
@@ -37,8 +38,20 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
       ? populated.filter(s => s.periodName === activePeriodName)
       : populated;
 
-    // Sort by most recent
-    filtered.sort((a, b) => b.timestamp - a.timestamp);
+    // Sort
+    if (sortBy === 'time') {
+      filtered.sort((a, b) => b.timestamp - a.timestamp);
+    } else if (sortBy === 'firstName') {
+      filtered.sort((a, b) => (a.studentInfo?.firstName || '').localeCompare(b.studentInfo?.firstName || ''));
+    } else if (sortBy === 'lastName') {
+      filtered.sort((a, b) => (a.studentInfo?.lastName || '').localeCompare(b.studentInfo?.lastName || ''));
+    } else if (sortBy === 'rank') {
+      filtered.sort((a, b) => {
+        const rankA = parseInt(a.studentInfo?.gradebookRank || '9999');
+        const rankB = parseInt(b.studentInfo?.gradebookRank || '9999');
+        return rankA - rankB;
+      });
+    }
     setScans(filtered);
   }
 
@@ -125,6 +138,12 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <div className="flex bg-slate-100 rounded-md p-0.5">
+             <Button variant={sortBy === 'time' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('time')} className={`h-8 px-3 text-[10px] font-bold uppercase ${sortBy === 'time' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Time</Button>
+             <Button variant={sortBy === 'firstName' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('firstName')} className={`h-8 px-3 text-[10px] font-bold uppercase ${sortBy === 'firstName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>First Name</Button>
+             <Button variant={sortBy === 'lastName' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('lastName')} className={`h-8 px-3 text-[10px] font-bold uppercase ${sortBy === 'lastName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Last Name</Button>
+             <Button variant={sortBy === 'rank' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('rank')} className={`h-8 px-3 text-[10px] font-bold uppercase ${sortBy === 'rank' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Rank</Button>
+          </div>
           <Input 
             type="date" 
             value={filterDate} 

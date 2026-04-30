@@ -770,8 +770,55 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
            </div>
         ) : (
            <div className="flex-1 flex flex-row gap-4 overflow-hidden min-h-0">
-              {/* Left Column: ACTIVE MOVEMENT */}
-              <div className="w-1/3 flex flex-col border rounded-xl bg-white shadow-sm overflow-hidden min-h-0">
+              {/* Column 1: ROSTER */}
+              <div className="w-[30%] flex flex-col border rounded-xl bg-white shadow-sm overflow-hidden min-h-0">
+                 <div className="bg-slate-50 px-3 py-2 border-b flex justify-between items-center shrink-0">
+                    <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Student Roster</h3>
+                    <span className="text-[10px] text-slate-400 font-bold">{sortedStudents.length}</span>
+                 </div>
+                 <div className="flex-1 overflow-y-auto overflow-x-hidden p-2">
+                    {sortedStudents.length === 0 ? (
+                       <div className="text-center text-slate-400 py-12 italic text-sm">No students found.</div>
+                    ) : (
+                       <div className="flex flex-col gap-1">
+                          {sortedStudents.map(student => {
+                             const moveStatus = getMovementStatus(student.id);
+                             if (moveStatus?.out) return null; // Hide from roster if out
+                             return (
+                                <div key={student.id} className="p-2 border border-slate-100 rounded-lg hover:bg-slate-50 flex flex-col gap-1.5 group cursor-pointer" onClick={() => logMovement(student, 'Bathroom')}>
+                                   <div className="flex justify-between items-start">
+                                      <div className="flex flex-col">
+                                         <span className="text-xs font-bold text-slate-700">{student.firstName} {student.lastName}</span>
+                                         <span className="text-[9px] text-slate-400 font-mono">{student.id}</span>
+                                      </div>
+                                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                         {['B', 'N', 'O', 'G'].map(char => {
+                                            const labelMap: Record<string, string> = { 'B': 'Bathroom', 'N': 'Nurse', 'O': 'Office', 'G': 'Guidance' };
+                                            return (
+                                               <Button 
+                                                  key={char}
+                                                  variant="ghost" 
+                                                  size="sm" 
+                                                  onClick={(e) => { e.stopPropagation(); logMovement(student, labelMap[char]); }}
+                                                  className="h-6 w-6 p-0 text-[10px] font-bold text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 border border-slate-200 bg-white"
+                                                  title={labelMap[char]}
+                                               >
+                                                  {char}
+                                               </Button>
+                                            )
+                                         })}
+                                      </div>
+                                   </div>
+                                </div>
+                             );
+                          })}
+                       </div>
+                    )}
+                 </div>
+              </div>
+
+              {/* Middle Column: ACTIVE MOVEMENT */}
+              <div className="w-[30%] flex flex-col border rounded-xl bg-white shadow-sm overflow-hidden min-h-0">
                  <div className="bg-amber-100/50 px-4 py-2 border-b flex justify-between items-center">
                     <h3 className="text-xs font-bold text-amber-700 uppercase tracking-widest">Out of Class</h3>
                     <span className="text-[10px] text-amber-600 font-bold bg-white px-2 py-0.5 rounded-full border border-amber-200">
@@ -795,7 +842,12 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                          <span className="text-xs font-bold text-slate-700">{student.lastName}, {student.firstName}</span>
                                          <span className="text-[10px] text-amber-600 font-bold uppercase tracking-tighter">Loc: {move.reason}</span>
                                       </div>
-                                      <span className="text-[10px] font-mono text-slate-400">{format(new Date(move.time), 'hh:mm a')}</span>
+                                      <div className="flex items-center gap-1 group/mtime">
+                                         <span className="text-[10px] font-mono text-slate-400">{format(new Date(move.time), 'hh:mm a')}</span>
+                                         <button onClick={() => openEditTime(move.logId, move.time)} className="opacity-0 group-hover/mtime:opacity-100 p-0 text-slate-300 hover:text-indigo-600 transition-opacity" title="Edit Time">
+                                            <Edit2 className="w-3.5 h-3.5" />
+                                         </button>
+                                      </div>
                                    </div>
                                    <Button 
                                       size="sm" 
@@ -855,7 +907,12 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                 </TableCell>
                                 <TableCell className="text-right py-1">
                                    <div className="flex flex-col items-end">
-                                      <span className="text-slate-500 tabular-nums text-[10px] font-semibold">{format(new Date(log.timestamp), 'hh:mm:ss a')}</span>
+                                      <div className="flex items-center justify-end gap-1 group/mtime">
+                                         <button onClick={() => openEditTime(log.id, log.timestamp)} className="opacity-0 group-hover/mtime:opacity-100 p-0 text-slate-300 hover:text-indigo-600 transition-opacity" title="Edit Time">
+                                            <Edit2 className="w-3 h-3" />
+                                         </button>
+                                         <span className="text-slate-500 tabular-nums text-[10px] font-semibold">{format(new Date(log.timestamp), 'hh:mm:ss a')}</span>
+                                      </div>
                                       <Button variant="ghost" size="sm" onClick={async () => {
                                          const db = await getDB();
                                          await db.delete('scans', log.id);
