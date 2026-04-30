@@ -10,6 +10,7 @@ import { ScannerTab } from './components/ScannerTab';
 import { StudentsTab } from './components/StudentsTab';
 import { SchedulesTab } from './components/SchedulesTab';
 import { ReportsTab } from './components/ReportsTab';
+import { BehaviorTab } from './components/BehaviorTab';
 import { initDefaultData, getDB, Schedule } from './lib/db';
 import { backupToDrive, initGoogleIdentity } from './lib/gdrive';
 import { Toaster, toast } from 'sonner';
@@ -301,6 +302,7 @@ export default function App() {
             <TabsTrigger value="scanner" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Scanner</TabsTrigger>
             <TabsTrigger value="students" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Students</TabsTrigger>
             <TabsTrigger value="reports" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Reports</TabsTrigger>
+            <TabsTrigger value="behavior" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Behavior</TabsTrigger>
             <TabsTrigger value="schedules" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Schedules</TabsTrigger>
           </TabsList>
           
@@ -322,6 +324,10 @@ export default function App() {
 
           <TabsContent value="schedules" className="pt-1">
             <SchedulesTab />
+          </TabsContent>
+
+          <TabsContent value="behavior" className="pt-1">
+            <BehaviorTab />
           </TabsContent>
         </Tabs>
       </main>

@@ -38,6 +38,17 @@ export interface ScanEvent {
   movementType?: 'Attendance' | 'Bathroom' | 'Nurse' | 'Office' | 'Guidance' | 'Returned';
 }
 
+export interface BehaviorEvent {
+  id: string;
+  studentId: string;
+  timestamp: number;
+  date: string;
+  type: 'Positive' | 'Negative' | 'Neutral';
+  category: string;
+  points: number;
+  notes?: string;
+}
+
 export interface Settings {
   key: string;
   value: any;
@@ -60,6 +71,14 @@ interface AppDB extends DBSchema {
       'by-student': string;
     };
   };
+  behaviors: {
+    key: string;
+    value: BehaviorEvent;
+    indexes: {
+      'by-date': string;
+      'by-student': string;
+    };
+  };
   settings: {
     key: string;
     value: Settings;
@@ -70,16 +89,24 @@ let dbPromise: Promise<IDBPDatabase<AppDB>> | null = null;
 
 export function getDB() {
   if (!dbPromise) {
-    dbPromise = openDB<AppDB>('barcode-scanner-db', 1, {
-      upgrade(db) {
-        db.createObjectStore('students', { keyPath: 'id' });
-        db.createObjectStore('schedules', { keyPath: 'id' });
-        
-        const scanStore = db.createObjectStore('scans', { keyPath: 'id' });
-        scanStore.createIndex('by-date', 'date');
-        scanStore.createIndex('by-student', 'studentId');
+    dbPromise = openDB<AppDB>('barcode-scanner-db', 2, {
+      upgrade(db, oldVersion, newVersion, transaction) {
+        if (oldVersion < 1) {
+          db.createObjectStore('students', { keyPath: 'id' });
+          db.createObjectStore('schedules', { keyPath: 'id' });
+          
+          const scanStore = db.createObjectStore('scans', { keyPath: 'id' });
+          scanStore.createIndex('by-date', 'date');
+          scanStore.createIndex('by-student', 'studentId');
 
-        db.createObjectStore('settings', { keyPath: 'key' });
+          db.createObjectStore('settings', { keyPath: 'key' });
+        }
+        
+        if (oldVersion < 2) {
+          const behaviorStore = db.createObjectStore('behaviors', { keyPath: 'id' });
+          behaviorStore.createIndex('by-date', 'date');
+          behaviorStore.createIndex('by-student', 'studentId');
+        }
       },
     });
   }
