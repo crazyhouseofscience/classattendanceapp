@@ -544,6 +544,9 @@ function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUn
             .reduce((total: number, ev: any) => total + ev.points, 0);
     };
 
+    // Define common quick actions
+    const quickActions = behaviors.filter(b => ['On Task', 'Off Task', 'Bathroom'].includes(b.name));
+
     const posBehaviors = behaviors.filter((b: any) => b.type === 'Positive');
     const negBehaviors = behaviors.filter((b: any) => b.type === 'Negative');
     const neutralBehaviors = behaviors.filter((b: any) => b.type === 'Neutral');
@@ -579,6 +582,18 @@ function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUn
                     <span className="text-[10px] sm:text-xs font-bold text-red-500 bg-red-100 px-1.5 py-0.5 rounded shadow-sm" title="Negative">{-1 * displayNeg}</span>
                 </div>
             </div>
+            
+            {/* Quick Actions Strip */}
+            {!isAbsent && (
+                <div className="flex gap-1 p-1.5 border-b border-gray-100 bg-white">
+                    {quickActions.map(b => (
+                        <button key={b.id} onClick={() => onTrack(b)} className={cn("flex-1 text-[10px] py-1 px-1 rounded-sm border font-medium transition-colors", b.type === 'Positive' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : b.type === 'Negative' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-slate-50 text-slate-700 border-slate-200')}>
+                            {b.name}
+                        </button>
+                    ))}
+                </div>
+            )}
+
             {!compactMode && !isAbsent && (
                 <div className="p-1.5 flex-1 flex flex-col gap-1.5">
                     {posBehaviors.length > 0 && (
