@@ -115,19 +115,23 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
     const scansIndex = db.transaction('scans').store.index('by-date');
     const todayScans = await scansIndex.getAll(todayStr);
     const absentIds = new Set<string>();
+    const lateIds = new Set<string>();
     
     filteredStudents.forEach(s => {
        const sScans = todayScans.filter(scan => scan.studentId === s.id);
-       const latestScan = sScans[sScans.length - 1]; // naive
-       const isAbsent = latestScan && ((latestScan.manualStatus as any) === 'Absent');
-       // Real app logic for attendance might be more complex, but let's check manualStatus or lack thereof
-       // Wait, scanner tab has a specific way it calculates. Let's see if any manualStatus is Absent.
+       
        const manualAbsent = sScans.some(scan => ((scan.manualStatus as string) || '') === 'Absent' && (!scan.movementType || scan.movementType === 'Attendance'));
        if (manualAbsent) {
           absentIds.add(s.id);
        }
+       
+       const manualLate = sScans.some(scan => ((scan.manualStatus as string) || '') === 'Late' && (!scan.movementType || scan.movementType === 'Attendance'));
+       if (manualLate) {
+          lateIds.add(s.id);
+       }
     });
     setAbsentStudents(absentIds);
+    setLateStudents(lateIds);
   };
 
 
@@ -439,6 +443,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
                              onTrack={(b: any) => trackBehavior(student.id, b)}
                              onUndo={() => undoLastBehavior(student.id)}
                              compactMode={compactMode}
+                             isAbsent={absentStudents.has(student.id)}
                              isLate={lateStudents.has(student.id)}
                            />
                         </div>
@@ -656,20 +661,12 @@ function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUn
             
             {/* Quick Actions Strip */}
             {!isAbsent && (
-                <div className="flex flex-col gap-1 p-1.5 border-b border-gray-100 bg-white">
-                    <Input 
-                        placeholder="Add note..."
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                        className="text-[10px] h-7"
-                    />
-                    <div className="flex gap-1">
-                        {quickActions.map(b => (
-                            <button key={b.id} onClick={() => {onTrack(b, comment); setComment('');}} className={cn("flex-1 text-[10px] py-1 px-1 rounded-sm border font-medium transition-colors", b.type === 'Positive' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : b.type === 'Negative' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-slate-50 text-slate-700 border-slate-200')}>
-                                {b.name}
-                            </button>
-                        ))}
-                    </div>
+                <div className="flex gap-1 p-1.5 border-b border-gray-100 bg-white">
+                    {quickActions.map(b => (
+                        <button key={b.id} onClick={() => {onTrack(b, comment); setComment('');}} className={cn("flex-1 text-[10px] py-1 px-1 rounded-sm border font-medium transition-colors", b.type === 'Positive' ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : b.type === 'Negative' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-slate-50 text-slate-700 border-slate-200')}>
+                            {b.name}
+                        </button>
+                    ))}
                 </div>
             )}
 
@@ -717,6 +714,13 @@ function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUn
                           </button>
                        )}
                     </div>
+                    {/* Add note input moved here */}
+                    <Input 
+                        placeholder="Add note..."
+                        value={comment}
+                        onChange={(e) => setComment(e.target.value)}
+                        className="text-[10px] h-7"
+                    />
                 </div>
             )}
             {isAbsent && !compactMode && (
