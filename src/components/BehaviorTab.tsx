@@ -29,7 +29,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
   const [absentStudents, setAbsentStudents] = useState<Set<string>>(new Set());
   const [lateStudents, setLateStudents] = useState<Set<string>>(new Set());
   const [showOnlyActive, setShowOnlyActive] = useState(false);
-  const [sortBy, setSortBy] = useState<'lastName' | 'points'>('lastName');
+  const [sortBy, setSortBy] = useState<'lastName' | 'firstName' | 'points'>('lastName');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<Student | null>(null);
   const [newComment, setNewComment] = useState('');
@@ -86,6 +86,10 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
             return sortOrder === 'asc' 
                 ? a.lastName.localeCompare(b.lastName) 
                 : b.lastName.localeCompare(a.lastName);
+        } else if (sortBy === 'firstName') {
+            return sortOrder === 'asc' 
+                ? a.firstName.localeCompare(b.firstName) 
+                : b.firstName.localeCompare(a.firstName);
         } else {
             const aPoints = todayBehaviors.filter(beh => beh.studentId === a.id).reduce((sum, beh) => sum + beh.points, 0);
             const bPoints = todayBehaviors.filter(beh => beh.studentId === b.id).reduce((sum, beh) => sum + beh.points, 0);
@@ -348,6 +352,9 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
             <button
                 onClick={() => {
                     if (sortBy === 'lastName') {
+                        setSortBy('firstName');
+                        setSortOrder('asc');
+                    } else if (sortBy === 'firstName') {
                         setSortBy('points');
                         setSortOrder('desc');
                     } else {
@@ -360,7 +367,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
                     "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
                 )}
             >
-                Sort: {sortBy === 'lastName' ? 'Name' : 'Points'} ({sortOrder === 'asc' ? 'A-Z' : 'Desc'})
+                Sort: {sortBy === 'lastName' ? 'Last Name' : sortBy === 'firstName' ? 'First Name' : 'Points'} ({sortOrder === 'asc' ? 'A-Z' : 'Desc'})
             </button>
 
             <button
