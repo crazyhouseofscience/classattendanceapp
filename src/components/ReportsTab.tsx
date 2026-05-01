@@ -98,8 +98,9 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
   }
 
   const getScanStatus = (scan: ScanEvent) => {
-    if (scan.movementType && scan.movementType !== 'Attendance') {
-      return { status: scan.movementType, color: 'bg-blue-100 text-blue-800' };
+    const effectiveMovementType = scan.movementType || (['Bathroom', 'Nurse', 'Office', 'Guidance', 'Returned'].includes(scan.notes || '') ? scan.notes : undefined);
+    if (effectiveMovementType && effectiveMovementType !== 'Attendance') {
+      return { status: effectiveMovementType.toUpperCase(), color: 'bg-blue-100 text-blue-800' };
     }
     
     if (scan.status === 'unknown_barcode') return { status: 'NOT FOUND', color: 'bg-red-100 text-red-800' };

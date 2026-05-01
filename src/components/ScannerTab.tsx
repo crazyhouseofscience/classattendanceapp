@@ -391,7 +391,8 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
          scheduleId: activeScheduleId,
          status: 'success',
          manualStatus: forceStatus || 'Present',
-         isExcused
+         isExcused,
+         movementType: 'Attendance'
        };
        await db.put('scans', scanEvent);
     }
@@ -438,7 +439,8 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
       periodName: activePeriodName,
       scheduleId: activeScheduleId,
       status: 'success',
-      notes: reason || 'Returned'
+      notes: reason || 'Returned',
+      movementType: (reason as any) || 'Returned'
     };
 
     await db.put('scans', scanEvent);
@@ -461,7 +463,10 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
   const getActivityLog = () => {
     // Show all scans that are NOT the attendance scan
-    return scans.filter(s => s.movementType !== 'Attendance').sort((a,b) => b.timestamp - a.timestamp);
+    return scans.filter(s => {
+      const isLegacyAttendance = !s.movementType && !['Bathroom', 'Nurse', 'Office', 'Guidance', 'Returned'].includes(s.notes || '');
+      return s.movementType !== 'Attendance' && !isLegacyAttendance;
+    }).sort((a,b) => b.timestamp - a.timestamp);
   };
 
   const rosterStudentIds = new Set(students.map(s => s.id));
