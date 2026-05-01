@@ -297,7 +297,7 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
           <input type="file" ref={fileInputRef} className="hidden" accept=".csv" onChange={handleImport} />
           <Button variant="outline" onClick={() => fileInputRef.current?.click()}><Upload className="w-4 h-4 mr-2" /> Import CSV</Button>
           <Button variant="outline" onClick={handleExport}><Download className="w-4 h-4 mr-2" /> Export CSV</Button>
-          <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setIsClearAllDialogOpen(true)}>Clear All</Button>
+          <Button variant="outline" className="text-red-600 hover:text-red-700 hover:bg-red-50" onClick={() => setIsClearAllDialogOpen(true)}>Clear Roster</Button>
 
           {activePeriodName && activePeriodName !== 'all' && (
              <Button variant="secondary" onClick={() => {
@@ -390,13 +390,14 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
 
           <Dialog open={isClearAllDialogOpen} onOpenChange={setIsClearAllDialogOpen}>
             <DialogContent className="max-w-md">
-              <DialogHeader><DialogTitle>Clear All Students</DialogTitle></DialogHeader>
-              <div className="py-4">
-                 Are you sure you want to delete all students? This cannot be undone.
+              <DialogHeader><DialogTitle>Clear Student Roster</DialogTitle></DialogHeader>
+              <div className="py-4 text-sm space-y-2">
+                 <p>Are you sure you want to delete <strong>all {allStudents.length} students</strong> from your database?</p>
+                 <p className="text-red-600 font-bold">Note: This will NOT delete their past attendance scans or behavior logs. This only clears the list of students you see in the roster.</p>
               </div>
               <div className="flex justify-end gap-2">
                  <Button variant="outline" onClick={() => setIsClearAllDialogOpen(false)}>Cancel</Button>
-                 <Button variant="destructive" onClick={handleDeleteAll}>Yes, Delete All</Button>
+                 <Button variant="destructive" onClick={handleDeleteAll}>Yes, Clear Roster</Button>
               </div>
             </DialogContent>
           </Dialog>

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getDB, ScanEvent, Student, Schedule } from '../lib/db';
+import { getDB, ScanEvent, Student, Schedule, BehaviorEvent } from '../lib/db';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { format } from 'date-fns';
 import { Input } from './ui/input';
@@ -13,116 +13,196 @@ interface ReportsTabProps {
   activeSchedule?: Schedule;
 }
 
+const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');
+
 export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule }: ReportsTabProps) {
+  const [activeTab, setActiveTab] = useState<'logs' | 'student-summary' | 'class-summary'>('logs');
   const [scans, setScans] = useState<(ScanEvent & { studentInfo?: Student })[]>([]);
-  const [filterDate, setFilterDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [sortBy, setSortBy] = useState<'time' | 'firstName' | 'lastName' | 'rank'>('time');
+  const [allStudents, setAllStudents] = useState<Student[]>([]);
+  const [allBehaviors, setAllBehaviors] = useState<BehaviorEvent[]>([]);
+  const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [sortBy, setSortBy] = useState<'time' | 'firstName' | 'lastName' | 'rank' | 'pos' | 'neg' | 'abs' | 'late'>('lastName');
 
   useEffect(() => {
-    loadScans();
-  }, [filterDate, activePeriodName, sortBy]);
+    loadData();
+  }, [startDate, endDate, activePeriodName, sortBy, activeTab]);
 
-  async function loadScans() {
+  async function loadData() {
     const db = await getDB();
-    const index = db.transaction('scans').store.index('by-date');
-    const allScans = await index.getAll(filterDate);
+    
+    const students = await db.getAll('students');
+    setAllStudents(students);
 
-    // Populate student info
-    const populated = await Promise.all(allScans.map(async (scan) => {
-      const student = await db.get('students', scan.studentId);
-      return { ...scan, studentInfo: student };
-    }));
+    if (activeTab === 'logs') {
+      const index = db.transaction('scans').store.index('by-date');
+      const allScans = await index.getAll(startDate);
 
-    // Filter by period if needed
-    const filtered = (activePeriodName && activePeriodName !== 'all') 
-      ? populated.filter(s => s.periodName === activePeriodName)
-      : populated;
+      const populated = await Promise.all(allScans.map(async (scan) => {
+        const student = students.find(s => s.id === scan.studentId);
+        return { ...scan, studentInfo: student };
+      }));
 
-    // Sort
-    if (sortBy === 'time') {
-      filtered.sort((a, b) => b.timestamp - a.timestamp);
-    } else if (sortBy === 'firstName') {
-      filtered.sort((a, b) => (a.studentInfo?.firstName || '').localeCompare(b.studentInfo?.firstName || ''));
-    } else if (sortBy === 'lastName') {
-      filtered.sort((a, b) => (a.studentInfo?.lastName || '').localeCompare(b.studentInfo?.lastName || ''));
-    } else if (sortBy === 'rank') {
-      filtered.sort((a, b) => {
-        const rankA = parseInt(a.studentInfo?.gradebookRank || '9999');
-        const rankB = parseInt(b.studentInfo?.gradebookRank || '9999');
-        return rankA - rankB;
-      });
+      let filtered = (activePeriodName && activePeriodName !== 'all') 
+        ? populated.filter(s => s.periodName === activePeriodName)
+        : populated;
+
+      if (sortBy === 'time') {
+        filtered.sort((a, b) => b.timestamp - a.timestamp);
+      } else if (sortBy === 'lastName') {
+        filtered.sort((a, b) => (a.studentInfo?.lastName || '').localeCompare(b.studentInfo?.lastName || ''));
+      } else if (sortBy === 'rank') {
+        filtered.sort((a, b) => parseInt(a.studentInfo?.gradebookRank || '9999') - parseInt(b.studentInfo?.gradebookRank || '9999'));
+      }
+      setScans(filtered);
+    } else {
+      const behaviorStore = db.transaction('behaviors').store;
+      const scanStore = db.transaction('scans').store;
+      
+      const rawScans = await scanStore.getAll();
+      const rawBehaviors = await behaviorStore.getAll();
+      
+      const filteredScans = rawScans.filter(s => s.date >= startDate && s.date <= endDate);
+      const filteredBehaviors = rawBehaviors.filter(b => b.date >= startDate && b.date <= endDate);
+      
+      setScans(filteredScans as any);
+      setAllBehaviors(filteredBehaviors);
     }
-    setScans(filtered);
   }
 
   const getScanStatus = (scan: ScanEvent) => {
-     if (scan.movementType && scan.movementType !== 'Attendance') {
-       return { status: scan.movementType, color: 'bg-blue-100 text-blue-800' };
-     }
-     
-     if (scan.status === 'unknown_barcode') return { status: 'NOT FOUND', color: 'bg-red-100 text-red-800' };
-     if (scan.status === 'not_in_period') return { status: 'NOT IN ROSTER', color: 'bg-amber-100 text-amber-800' };
+    if (scan.movementType && scan.movementType !== 'Attendance') {
+      return { status: scan.movementType, color: 'bg-blue-100 text-blue-800' };
+    }
+    
+    if (scan.status === 'unknown_barcode') return { status: 'NOT FOUND', color: 'bg-red-100 text-red-800' };
+    if (scan.status === 'not_in_period') return { status: 'NOT IN ROSTER', color: 'bg-amber-100 text-amber-800' };
 
-     if (scan.manualStatus) {
-       return { 
-         status: scan.manualStatus.toUpperCase(), 
-         color: scan.manualStatus === 'Late' ? 'bg-amber-100 text-amber-800' : 'bg-green-100 text-green-800' 
-       };
-     }
+    if (scan.manualStatus) {
+      return { 
+        status: scan.manualStatus.toUpperCase(), 
+        color: scan.manualStatus === 'Late' ? 'bg-amber-600 text-white' : scan.manualStatus === 'Absent' ? 'bg-red-600 text-white' : 'bg-green-600 text-white' 
+      };
+    }
 
-     const periodConfig = activeSchedule?.periods.find(p => p.name === scan.periodName);
-     const overrideKey = `override_${filterDate}_${activeScheduleId}_${scan.periodName}`;
-     const manualStartTime = localStorage.getItem(overrideKey);
-     const effectiveStartTime = manualStartTime || periodConfig?.startTime;
-     const gracePeriod = parseInt(localStorage.getItem('grace_period') || '5');
+    const periodConfig = activeSchedule?.periods.find(p => p.name === scan.periodName);
+    const gracePeriod = parseInt(localStorage.getItem('grace_period') || '5');
+    const overrideKey = `override_${scan.date}_${activeScheduleId}_${scan.periodName}`;
+    const manualStartTime = localStorage.getItem(overrideKey);
+    const effectiveStartTime = manualStartTime || periodConfig?.startTime;
 
-     if (effectiveStartTime) {
-         const [baseH, baseM] = effectiveStartTime.split(':').map(Number);
-         const baseMinutes = baseH * 60 + baseM;
-         const cutoffMinutes = baseMinutes + gracePeriod;
+    if (effectiveStartTime) {
+        const [baseH, baseM] = effectiveStartTime.split(':').map(Number);
+        const baseMinutes = baseH * 60 + baseM;
+        const cutoffMinutes = baseMinutes + gracePeriod;
 
-         const scanDate = new Date(scan.timestamp);
-         const scanH = scanDate.getHours();
-         const scanM = scanDate.getMinutes();
-         const scanMinutes = scanH * 60 + scanM;
+        const scanDate = new Date(scan.timestamp);
+        const scanMinutes = scanDate.getHours() * 60 + scanDate.getMinutes();
 
-         if (scanMinutes > cutoffMinutes) {
-             return { status: 'LATE', color: 'bg-amber-100 text-amber-800' };
-         }
-     }
-     
-     return { status: 'ON TIME', color: 'bg-green-100 text-green-800' };
+        if (scanMinutes > cutoffMinutes) {
+            return { status: 'LATE', color: 'bg-amber-600 text-white' };
+        }
+    }
+    
+    return { status: 'ON TIME', color: 'bg-green-600 text-white' };
   };
 
+  const getStatsForStudent = (studentId: string) => {
+    const studentScans = scans.filter(s => s.studentId === studentId);
+    const studentBehaviors = allBehaviors.filter(b => b.studentId === studentId);
+
+    const pos = studentBehaviors.filter(b => b.type === 'Positive').length;
+    const neg = studentBehaviors.filter(b => b.type === 'Negative').length;
+    const neu = studentBehaviors.filter(b => b.type === 'Neutral').length;
+
+    const abs = studentScans.filter(s => s.manualStatus === 'Absent').length;
+    const lates = studentScans.filter(s => {
+      if (s.manualStatus === 'Late') return true;
+      const status = getScanStatus(s);
+      return status.status === 'LATE';
+    }).length;
+
+    return { pos, neg, neu, abs, lates, total: pos - neg };
+  };
+
+  const studentsToDisplay = (activePeriodName && activePeriodName !== 'all')
+    ? allStudents.filter(s => s.periods?.includes(activePeriodName))
+    : allStudents;
+
+  if (activeTab === 'student-summary') {
+      if (sortBy === 'lastName') {
+          studentsToDisplay.sort((a, b) => a.lastName.localeCompare(b.lastName));
+      } else if (sortBy === 'rank') {
+          studentsToDisplay.sort((a, b) => parseInt(a.gradebookRank || '9999') - parseInt(b.gradebookRank || '9999'));
+      } else if (sortBy === 'pos') {
+          studentsToDisplay.sort((a, b) => getStatsForStudent(b.id).pos - getStatsForStudent(a.id).pos);
+      } else if (sortBy === 'neg') {
+          studentsToDisplay.sort((a, b) => getStatsForStudent(b.id).neg - getStatsForStudent(a.id).neg);
+      } else if (sortBy === 'abs') {
+          studentsToDisplay.sort((a, b) => getStatsForStudent(b.id).abs - getStatsForStudent(a.id).abs);
+      } else if (sortBy === 'late') {
+          studentsToDisplay.sort((a, b) => getStatsForStudent(b.id).lates - getStatsForStudent(a.id).lates);
+      }
+  }
+
   const exportToCSV = () => {
-    if (scans.length === 0) {
+    if (scans.length === 0 && allBehaviors.length === 0) {
       toast.error('No data to export');
       return;
     }
 
-    const headers = ['Timestamp', 'Date', 'Period', 'Barcode/ID', 'First Name', 'Last Name', 'Status', 'Pass', 'Reason/Notes'];
-    const rows = scans.map(s => [
-      format(new Date(s.timestamp), 'h:mm:ss a'),
-      s.date,
-      s.periodName,
-      s.studentId,
-      s.studentInfo?.firstName || 'Unknown',
-      s.studentInfo?.lastName || 'Unknown',
-      getScanStatus(s).status,
-      s.isExcused ? 'Pass' : s.hasNoPass ? 'No Pass' : '',
-      (s.notes || '').replace(/,/g, ';') // Avoid CSV issues with commas
-    ]);
+    let headers: string[] = [];
+    let rows: any[][] = [];
+    let fileName = '';
 
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(r => r.join(','))
-    ].join('\n');
+    if (activeTab === 'logs') {
+      headers = ['Timestamp', 'Date', 'Period', 'Barcode/ID', 'First Name', 'Last Name', 'Status', 'Pass', 'Reason/Notes'];
+      rows = scans.map(s => [
+        format(new Date(s.timestamp), 'h:mm:ss a'),
+        s.date,
+        s.periodName,
+        s.studentId,
+        s.studentInfo?.firstName || 'Unknown',
+        s.studentInfo?.lastName || 'Unknown',
+        getScanStatus(s).status,
+        s.isExcused ? 'Pass' : s.hasNoPass ? 'No Pass' : '',
+        (s.notes || '').replace(/,/g, ';')
+      ]);
+      fileName = `attendance_report_${startDate}.csv`;
+    } else if (activeTab === 'student-summary') {
+      headers = ['Barcode/ID', 'First Name', 'Last Name', 'Absences', 'Lates', 'Positive', 'Negative', 'Total Score'];
+      rows = studentsToDisplay.map(s => {
+        const stats = getStatsForStudent(s.id);
+        return [s.id, s.firstName, s.lastName, stats.abs, stats.lates, stats.pos, stats.neg, stats.total];
+      });
+      fileName = `student_summary_${startDate}_to_${endDate}.csv`;
+    } else {
+        const stats = studentsToDisplay.reduce((acc, s) => {
+            const sStat = getStatsForStudent(s.id);
+            acc.abs += sStat.abs;
+            acc.late += sStat.lates;
+            acc.pos += sStat.pos;
+            acc.neg += sStat.neg;
+            return acc;
+        }, { abs: 0, late: 0, pos: 0, neg: 0 });
 
+        headers = ['Metric', 'Value'];
+        rows = [
+            ['Total Absences', stats.abs],
+            ['Total Lates', stats.late],
+            ['Total Positive Behaviors', stats.pos],
+            ['Total Negative Behaviors', stats.neg],
+            ['Student Count', studentsToDisplay.length]
+        ];
+        fileName = `class_summary_${startDate}_to_${endDate}.csv`;
+    }
+
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', `attendance_report_${filterDate}.csv`);
+    link.setAttribute('download', fileName);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -131,78 +211,182 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
 
   return (
     <div className="space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h2 className="text-xl font-black tracking-tight text-slate-800">Scan Reports</h2>
-          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest leading-none mt-0.5">
-            {activePeriodName && activePeriodName !== 'all' ? `Period: ${activePeriodName}` : 'All Periods'} • {format(new Date(filterDate + 'T12:00:00'), 'MMMM do, yyyy')}
-          </p>
+          <h2 className="text-xl font-black tracking-tight text-slate-800">Reports & Analytics</h2>
+          <div className="flex gap-4 mt-1">
+              <button 
+                onClick={() => setActiveTab('logs')}
+                className={cn("text-[10px] font-bold uppercase tracking-widest pb-1 border-b-2 transition-colors", activeTab === 'logs' ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-400 hover:text-slate-600")}
+              >Daily Logs</button>
+              <button 
+                onClick={() => setActiveTab('student-summary')}
+                className={cn("text-[10px] font-bold uppercase tracking-widest pb-1 border-b-2 transition-colors", activeTab === 'student-summary' ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-400 hover:text-slate-600")}
+              >Student Summary</button>
+              <button 
+                onClick={() => setActiveTab('class-summary')}
+                className={cn("text-[10px] font-bold uppercase tracking-widest pb-1 border-b-2 transition-colors", activeTab === 'class-summary' ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-400 hover:text-slate-600")}
+              >Class Summary</button>
+          </div>
         </div>
         <div className="flex items-center gap-2">
-          <div className="flex bg-slate-100 rounded-md p-0.5">
-             <Button variant={sortBy === 'time' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('time')} className={`h-8 px-3 text-[10px] font-bold uppercase ${sortBy === 'time' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Time</Button>
-             <Button variant={sortBy === 'firstName' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('firstName')} className={`h-8 px-3 text-[10px] font-bold uppercase ${sortBy === 'firstName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>First Name</Button>
-             <Button variant={sortBy === 'lastName' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('lastName')} className={`h-8 px-3 text-[10px] font-bold uppercase ${sortBy === 'lastName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Last Name</Button>
-             <Button variant={sortBy === 'rank' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('rank')} className={`h-8 px-3 text-[10px] font-bold uppercase ${sortBy === 'rank' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Rank</Button>
+          <div className="flex items-center gap-1 bg-white border border-slate-200 rounded-lg p-1 shadow-sm">
+              <Input 
+                type="date" 
+                value={startDate} 
+                onChange={e => setStartDate(e.target.value)} 
+                className="w-32 h-7 text-[10px] font-bold border-none bg-transparent shadow-none focus-visible:ring-0" 
+              />
+              {activeTab !== 'logs' && (
+                  <>
+                    <span className="text-[10px] font-bold text-slate-300">/</span>
+                    <Input 
+                      type="date" 
+                      value={endDate} 
+                      onChange={e => setEndDate(e.target.value)} 
+                      className="w-32 h-7 text-[10px] font-bold border-none bg-transparent shadow-none focus-visible:ring-0" 
+                    />
+                  </>
+              )}
           </div>
-          <Input 
-            type="date" 
-            value={filterDate} 
-            onChange={e => setFilterDate(e.target.value)} 
-            className="w-36 h-8 text-xs font-bold border-slate-200" 
-          />
           <Button 
             onClick={exportToCSV} 
             variant="outline" 
             size="sm" 
-            className="h-8 gap-2 text-[10px] font-black uppercase text-indigo-600 border-indigo-200 hover:bg-indigo-50"
+            className="h-9 gap-2 text-[10px] font-black uppercase text-indigo-600 border-indigo-200 hover:bg-indigo-50 shadow-sm"
           >
-            <FileDown className="w-3 h-3" /> CSV Export
+            <FileDown className="w-3.5 h-3.5" /> Export
           </Button>
         </div>
       </div>
 
-      <div className="border rounded-xl bg-white overflow-hidden">
-        <Table>
-          <TableHeader className="bg-slate-50">
-            <TableRow>
-              <TableHead>Time</TableHead>
-              <TableHead>Period</TableHead>
-              <TableHead>Barcode/ID</TableHead>
-              <TableHead>Student Name</TableHead>
-              <TableHead>Status</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {scans.length === 0 ? (
-              <TableRow><TableCell colSpan={5} className="text-center text-slate-500 py-8">No scans recorded on this date for this period.</TableCell></TableRow>
-            ) : (
-              scans.map(s => (
-                <TableRow key={s.id}>
-                  <TableCell>{format(new Date(s.timestamp), 'h:mm:ss a')}</TableCell>
-                  <TableCell>{s.periodName}</TableCell>
-                  <TableCell className="font-mono">{s.studentId}</TableCell>
-                  <TableCell>
-                    {s.studentInfo 
-                      ? `${s.studentInfo.firstName} ${s.studentInfo.lastName}` 
-                      : <span className="text-red-500 italic">Unknown</span>}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                    {(() => {
-                        const { status, color } = getScanStatus(s);
-                        return <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase ${color}`}>{status}</span>;
-                    })()}
-                    {s.isExcused && <span className="px-2 py-1 rounded-full text-[10px] font-black uppercase bg-blue-100 text-blue-800">PASS</span>}
-                    {s.hasNoPass && <span className="px-2 py-1 rounded-full text-[10px] font-black uppercase bg-red-100 text-red-800">NO PASS</span>}
-                    </div>
-                  </TableCell>
+      <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+         <span className="text-[10px] font-bold text-slate-400 uppercase shrink-0">Sort:</span>
+         <div className="flex bg-slate-100 rounded-lg p-0.5 shrink-0">
+             <Button variant={sortBy === 'lastName' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('lastName')} className={`h-7 px-3 text-[10px] font-bold uppercase ${sortBy === 'lastName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Name</Button>
+             <Button variant={sortBy === 'rank' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('rank')} className={`h-7 px-3 text-[10px] font-bold uppercase ${sortBy === 'rank' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Rank</Button>
+             {activeTab === 'logs' && <Button variant={sortBy === 'time' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('time')} className={`h-7 px-3 text-[10px] font-bold uppercase ${sortBy === 'time' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Time</Button>}
+             {activeTab === 'student-summary' && (
+                 <>
+                    <Button variant={sortBy === 'pos' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('pos')} className={`h-7 px-3 text-[10px] font-bold uppercase ${sortBy === 'pos' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Pos</Button>
+                    <Button variant={sortBy === 'neg' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('neg')} className={`h-7 px-3 text-[10px] font-bold uppercase ${sortBy === 'neg' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Neg</Button>
+                    <Button variant={sortBy === 'abs' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('abs')} className={`h-7 px-3 text-[10px] font-bold uppercase ${sortBy === 'abs' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Abs</Button>
+                    <Button variant={sortBy === 'late' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('late')} className={`h-7 px-3 text-[10px] font-bold uppercase ${sortBy === 'late' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Late</Button>
+                 </>
+             )}
+         </div>
+      </div>
+
+      <div className="border rounded-xl bg-white overflow-hidden shadow-sm border-slate-200">
+        {activeTab === 'logs' && (
+            <Table>
+              <TableHeader className="bg-slate-50/50">
+                <TableRow className="hover:bg-transparent border-slate-200">
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 h-10">Time</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 h-10">Period</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 h-10">ID</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 h-10">Student Name</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 h-10">Status</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              </TableHeader>
+              <TableBody>
+                {scans.length === 0 ? (
+                  <TableRow><TableCell colSpan={5} className="text-center text-slate-400 py-16 text-xs font-medium italic">No scans found for this selection.</TableCell></TableRow>
+                ) : (
+                  scans.map(s => (
+                    <TableRow key={s.id} className="hover:bg-slate-50/50 transition-colors border-slate-100">
+                      <TableCell className="text-[11px] font-medium text-slate-600">{format(new Date(s.timestamp), 'h:mm a')}</TableCell>
+                      <TableCell className="text-[11px] font-medium text-slate-500">{s.periodName}</TableCell>
+                      <TableCell className="text-[11px] font-mono text-slate-400">{s.studentId}</TableCell>
+                      <TableCell className="text-[11px] font-bold text-slate-700">
+                        {s.studentInfo ? `${s.studentInfo.firstName} ${s.studentInfo.lastName}` : <span className="text-red-400">Unknown</span>}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1.5 font-black uppercase text-[9px]">
+                        {(() => {
+                            const { status, color } = getScanStatus(s);
+                            return <span className={cn("px-2 py-0.5 rounded shadow-sm", color)}>{status}</span>;
+                        })()}
+                        {s.isExcused && <span className="px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 border border-indigo-100 shadow-sm">PASS</span>}
+                        {s.hasNoPass && <span className="px-2 py-0.5 rounded bg-red-50 text-red-600 border border-red-100 shadow-sm">NO PASS</span>}
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+        )}
+
+        {activeTab === 'student-summary' && (
+            <Table>
+              <TableHeader className="bg-slate-50/50">
+                <TableRow className="hover:bg-transparent border-slate-200">
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 h-10">Student Name</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 text-center h-10">Abs</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 text-center h-10">Late</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 text-center h-10">Pos</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 text-center h-10">Neg</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 text-right h-10">Score</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {studentsToDisplay.map(student => {
+                  const stats = getStatsForStudent(student.id);
+                  return (
+                    <TableRow key={student.id} className="hover:bg-slate-50/50 transition-colors border-slate-100">
+                      <TableCell className="text-[11px] font-bold text-slate-700">{student.firstName} {student.lastName}</TableCell>
+                      <TableCell className="text-[11px] text-center font-mono text-red-500 font-bold">{stats.abs}</TableCell>
+                      <TableCell className="text-[11px] text-center font-mono text-amber-600 font-bold">{stats.lates}</TableCell>
+                      <TableCell className="text-[11px] text-center font-mono text-emerald-600 font-bold">{stats.pos}</TableCell>
+                      <TableCell className="text-[11px] text-center font-mono text-red-600 font-bold">{stats.neg}</TableCell>
+                      <TableCell className="text-[11px] text-right font-mono font-black text-indigo-600">{stats.total}</TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+        )}
+
+        {activeTab === 'class-summary' && (
+            <div className="p-8 bg-slate-50/30">
+                {(() => {
+                    const stats = studentsToDisplay.reduce((acc, s) => {
+                        const sStat = getStatsForStudent(s.id);
+                        acc.abs += sStat.abs;
+                        acc.late += sStat.lates;
+                        acc.pos += sStat.pos;
+                        acc.neg += sStat.neg;
+                        return acc;
+                    }, { abs: 0, late: 0, pos: 0, neg: 0 });
+
+                    return (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                            <StatCard label="Absences" value={stats.abs} color="red" />
+                            <StatCard label="Lates" value={stats.late} color="amber" />
+                            <StatCard label="Pos Behavior" value={stats.pos} color="emerald" />
+                            <StatCard label="Neg Behavior" value={stats.neg} color="slate" />
+                        </div>
+                    );
+                })()}
+            </div>
+        )}
       </div>
     </div>
   );
+}
+
+function StatCard({ label, value, color }: { label: string, value: number, color: string }) {
+    const colors: Record<string, string> = {
+        red: "bg-red-50 border-red-100 text-red-600",
+        amber: "bg-amber-50 border-amber-100 text-amber-600",
+        emerald: "bg-emerald-50 border-emerald-100 text-emerald-600",
+        slate: "bg-slate-100 border-slate-200 text-slate-700"
+    };
+    return (
+        <div className={cn("p-5 rounded-2xl border shadow-sm transition-transform hover:scale-[1.02]", colors[color])}>
+            <span className="block text-[10px] font-black uppercase opacity-60 tracking-wider mb-1">{label}</span>
+            <span className="text-4xl font-black">{value}</span>
+        </div>
+    );
 }

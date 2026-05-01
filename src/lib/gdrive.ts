@@ -61,15 +61,17 @@ export async function backupToDrive() {
     const students = await db.getAll('students');
     const schedules = await db.getAll('schedules');
     const scans = await db.getAll('scans');
+    const behaviors = await db.getAll('behaviors');
     const settings = await db.getAll('settings');
     
     const exportData = {
       students,
       schedules,
       scans,
+      behaviors,
       settings,
       exportDate: new Date().toISOString(),
-      version: '1.0'
+      version: '1.1'
     };
     
     const fileContent = JSON.stringify(exportData, null, 2);
