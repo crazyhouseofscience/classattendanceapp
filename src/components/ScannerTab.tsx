@@ -660,44 +660,12 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
               <div className="flex items-center gap-1.5 p-0.5 bg-slate-100 rounded-md">
                  <span className="text-[8px] font-black text-slate-400 uppercase ml-2 mr-1">Sort Mode:</span>
                  <Button 
-                    variant={sortBy === 'firstName' ? 'secondary' : 'ghost'} 
-                    size="sm" 
-                    onClick={() => setSortBy('firstName')}
-                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'firstName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
-                 >
-                    First Name
-                 </Button>
-                 <Button 
-                    variant={sortBy === 'lastName' ? 'secondary' : 'ghost'} 
-                    size="sm" 
-                    onClick={() => setSortBy('lastName')}
-                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'lastName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
-                 >
-                    Last Name
-                 </Button>
-                 <Button 
                     variant={sortBy === 'status' ? 'secondary' : 'ghost'} 
                     size="sm" 
                     onClick={() => setSortBy('status')}
                     className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'status' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
                  >
                     Status
-                 </Button>
-                 <Button 
-                    variant={sortBy === 'rank' ? 'secondary' : 'ghost'} 
-                    size="sm" 
-                    onClick={() => setSortBy('rank')}
-                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'rank' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
-                 >
-                    Rank
-                 </Button>
-                 <Button 
-                    variant={sortBy === 'id' ? 'secondary' : 'ghost'} 
-                    size="sm" 
-                    onClick={() => setSortBy('id')}
-                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'id' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
-                 >
-                    ID
                  </Button>
               </div>
            )}
@@ -812,9 +780,18 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
            <div className="flex-1 flex flex-row gap-4 overflow-hidden min-h-0">
               {/* Column 1: ROSTER */}
               <div className="w-[30%] flex flex-col border rounded-xl bg-white shadow-sm overflow-hidden min-h-0">
-                 <div className="bg-slate-50 px-3 py-2 border-b flex justify-between items-center shrink-0">
-                    <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Student Roster</h3>
-                    <span className="text-[10px] text-slate-400 font-bold">{sortedStudents.length}</span>
+                 <div className="bg-slate-50 px-3 py-2 border-b flex flex-col gap-2 shrink-0">
+                    <div className="flex justify-between items-center">
+                       <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Student Roster</h3>
+                       <span className="text-[10px] text-slate-400 font-bold">{sortedStudents.length}</span>
+                    </div>
+                    <div className="flex items-center gap-1">
+                       <span className="text-[8px] font-bold text-slate-400 uppercase">Sort:</span>
+                       <Button variant={sortBy === 'firstName' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('firstName')} className={`h-5 px-1.5 text-[9px] font-bold uppercase ${sortBy === 'firstName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>First</Button>
+                       <Button variant={sortBy === 'lastName' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('lastName')} className={`h-5 px-1.5 text-[9px] font-bold uppercase ${sortBy === 'lastName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Last</Button>
+                       <Button variant={sortBy === 'id' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('id')} className={`h-5 px-1.5 text-[9px] font-bold uppercase ${sortBy === 'id' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>ID</Button>
+                       <Button variant={sortBy === 'rank' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('rank')} className={`h-5 px-1.5 text-[9px] font-bold uppercase ${sortBy === 'rank' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Rank</Button>
+                    </div>
                  </div>
                  <div className="flex-1 overflow-y-auto overflow-x-hidden p-2">
                     {sortedStudents.length === 0 ? (
@@ -954,10 +931,11 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                          <span className="text-slate-500 tabular-nums text-[10px] font-semibold">{format(new Date(log.timestamp), 'hh:mm:ss a')}</span>
                                       </div>
                                       <Button variant="ghost" size="sm" onClick={async () => {
+                                         if(!window.confirm('Delete this movement event?')) return;
                                          const db = await getDB();
                                          await db.delete('scans', log.id);
                                          loadData();
-                                      }} className="h-4 px-1 text-[8px] text-red-300 hover:text-red-500 font-bold uppercase invisible group-hover:visible">Delete</Button>
+                                      }} className="h-4 px-1 text-[8px] text-red-300 hover:text-red-500 font-bold uppercase opacity-20 hover:opacity-100 transition-opacity">Delete</Button>
                                    </div>
                                 </TableCell>
                              </TableRow>
