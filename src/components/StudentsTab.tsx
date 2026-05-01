@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { getDB, Student, Schedule } from '../lib/db';
+import { triggerAutoBackup } from '../lib/gdrive';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -74,6 +75,7 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
     toast.success("Student saved");
     setIsDialogOpen(false);
     loadStudents();
+    triggerAutoBackup();
   }
 
   const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -240,6 +242,7 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
     toast.success('All students cleared');
     loadStudents();
     setIsClearAllDialogOpen(false);
+    triggerAutoBackup();
   };
 
   const togglePeriod = (periodName: string) => {
@@ -274,6 +277,7 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
     await db.put('students', updatedStudent);
     await loadStudents();
     toast.success(`Enrolled ${student.firstName} ${student.lastName} in ${activePeriodName}`);
+    triggerAutoBackup();
   };
 
   const enrollAllVisible = async () => {
@@ -285,6 +289,7 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
     }
     await loadStudents();
     toast.success(`Enrolled ${filteredUnassigned.length} students in ${activePeriodName}`);
+    triggerAutoBackup();
   };
 
   return (

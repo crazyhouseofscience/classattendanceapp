@@ -107,3 +107,22 @@ export async function backupToDrive() {
     throw error;
   }
 }
+
+let backupTimeout: any = null;
+
+export function triggerAutoBackup(delayMs = 5000) {
+  // Check if we have a token or at least attempt to get one silently?
+  // Actually, GIS usually needs a popup if not already authed.
+  // We'll only attempt if accessToken is already set to avoid annoying popups every 5 seconds.
+  if (!accessToken) return;
+
+  if (backupTimeout) clearTimeout(backupTimeout);
+  backupTimeout = setTimeout(async () => {
+    try {
+      await backupToDrive();
+      console.log('Auto-backup complete');
+    } catch (e) {
+      console.warn('Auto-backup failed:', e);
+    }
+  }, delayMs);
+}

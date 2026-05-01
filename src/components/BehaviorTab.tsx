@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getDB, Student, BehaviorEvent, ScanEvent } from '../lib/db';
+import { triggerAutoBackup } from '../lib/gdrive';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { format } from 'date-fns';
@@ -163,6 +164,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
 
     toast.success(`Logged ${b.name} (${b.points > 0 ? '+' : ''}${b.points})`);
     loadData();
+    triggerAutoBackup();
   };
 
   const undoLastBehavior = async (studentId: string) => {
@@ -173,6 +175,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
        await db.delete('behaviors', latest.id);
        toast.success(`Undo successful`);
        loadData();
+       triggerAutoBackup();
     }
   };
 
@@ -180,6 +183,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
     const db = await getDB();
     await db.put('settings', { key: 'custom_behaviors', value: newBehaviors });
     setBehaviors(newBehaviors);
+    triggerAutoBackup();
   };
 
   const importOldBackup = async (file: File) => {
@@ -308,6 +312,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
         };
         await db.put('students', updated);
         loadData();
+        triggerAutoBackup();
       }
     }
   };

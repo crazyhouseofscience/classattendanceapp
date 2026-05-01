@@ -3,6 +3,7 @@ import { Card, CardContent } from './ui/card';
 import { Label } from './ui/label';
 import { Button } from './ui/button';
 import { getDB, Student, ScanEvent, Schedule } from '../lib/db';
+import { triggerAutoBackup } from '../lib/gdrive';
 import { format } from 'date-fns';
 import { CheckCircle, XCircle, AlertTriangle, Clock, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -300,13 +301,17 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     const todayStr = format(now, 'yyyy-MM-dd');
     const todayScans = await db.transaction('scans').store.index('by-date').getAll(todayStr);
     const studentScans = todayScans.filter(s => s.studentId === code && s.periodName === effectivePeriodName);
-    const isFirstScan = studentScans.length === 0;
+    
+    // Movement type determination
+    // If a purpose is explicitly set, use it. Otherwise, if it's the first scan, it's Attendance.
+    const movementType = purpose || (studentScans.length === 0 ? 'Attendance' : 'Returned');
+    const isAttendanceScan = movementType === 'Attendance';
     
     let manualStatus: 'Late' | undefined = undefined;
 
-    // Attendance calculation logic
+    // Attendance calculation logic - only for Attendance scans
     const effectiveStartTime = manualStartTime || currentPeriodConfig?.startTime;
-    if (isFirstScan && effectiveStartTime) {
+    if (isAttendanceScan && effectiveStartTime) {
          const [baseH, baseM] = effectiveStartTime.split(':').map(Number);
          const baseMinutes = baseH * 60 + baseM;
          const cutoffMinutes = baseMinutes + gracePeriod;
@@ -335,16 +340,17 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
         scheduleId: effectiveScheduleId,
         status: status === 'success' || status === 'not_in_period' ? 'success' : 'unknown_barcode',
         notes: purpose || undefined,
-        movementType: isFirstScan ? 'Attendance' : (purpose as any || 'Returned'),
+        movementType: movementType as any,
         manualStatus
     };
 
     await db.put('scans', scanEvent);
     setLastScan({ student: student || null, barcode: code, status, timestamp: now });
     await loadData();
+    triggerAutoBackup();
 
     if (status === 'success' || status === 'not_in_period') {
-       setView(isFirstScan ? 'attendance' : 'movement');
+       setView(isAttendanceScan ? 'attendance' : 'movement');
     }
 
     if (status === 'success') {
@@ -392,6 +398,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
     toast.success(`${student.firstName} marked ${forceStatus || 'Present'}${isExcused ? ' (Excused)' : ''}`);
     await loadData();
+    triggerAutoBackup();
   };
 
   const toggleExcused = async (studentToToggle: Student) => {
@@ -403,6 +410,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     const updated = { ...scan, isExcused: !scan.isExcused };
     await db.put('scans', updated);
     await loadData();
+    triggerAutoBackup();
   };
 
   const toggleNoPass = async (studentToToggle: Student) => {
@@ -414,6 +422,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     const updated = { ...scan, hasNoPass: !scan.hasNoPass };
     await db.put('scans', updated);
     await loadData();
+    triggerAutoBackup();
   };
 
   const logMovement = async (student: Student, reason: string | null) => {
@@ -436,6 +445,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     await loadData();
     setView('movement');
     toast.success(`${student.firstName} ${reason ? `sent to ${reason}` : 'returned'}`);
+    triggerAutoBackup();
   };
 
   const updateLogReason = async (logId: string, newReason: string | null) => {
@@ -446,6 +456,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
      const updated = { ...existing, notes: newReason || undefined, movementType: newReason as any || 'Returned' };
      await db.put('scans', updated);
      await loadData();
+     triggerAutoBackup();
   };
 
   const getActivityLog = () => {
