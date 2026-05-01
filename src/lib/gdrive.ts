@@ -52,7 +52,7 @@ export async function getAccessToken(): Promise<string> {
   });
 }
 
-export async function backupToDrive() {
+export async function backupToDrive(isAuto = false) {
   try {
     const token = await getAccessToken();
     
@@ -77,8 +77,13 @@ export async function backupToDrive() {
     const fileContent = JSON.stringify(exportData, null, 2);
     const file = new Blob([fileContent], { type: 'application/json' });
     
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+    const fileName = isAuto 
+      ? `AUTO_backup_${timestamp}.json` 
+      : `manual_backup_${new Date().toISOString().split('T')[0]}.json`;
+
     const metadata = {
-      name: `barcode_scanner_backup_${new Date().toISOString().split('T')[0]}.json`,
+      name: fileName,
       mimeType: 'application/json',
     };
 
@@ -119,7 +124,7 @@ export function triggerAutoBackup(delayMs = 5000) {
   if (backupTimeout) clearTimeout(backupTimeout);
   backupTimeout = setTimeout(async () => {
     try {
-      await backupToDrive();
+      await backupToDrive(true);
       console.log('Auto-backup complete');
     } catch (e) {
       console.warn('Auto-backup failed:', e);

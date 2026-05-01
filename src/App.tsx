@@ -177,9 +177,6 @@ export default function App() {
   };
 
   const handleLocalImport = () => {
-    const confirmImport = window.confirm("Are you sure? Importing a file will OVERWRITE all your current student rosters, schedules, and attendance data. This cannot be undone.");
-    if (!confirmImport) return;
-
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = 'application/json';
@@ -194,36 +191,29 @@ export default function App() {
              const data = JSON.parse(event.target?.result as string);
              if (!data.version || !data.students) throw new Error("Invalid format");
              
+             const mode = window.confirm("MODAL: Import Data\n\nClick OK to MERGE (add missing students/scans and update existing records).\nClick CANCEL to OVERWRITE (deletes EVERYTHING current first).");
+             
              const db = await getDB();
              
-             if (data.students) {
+             if (!mode) {
+                // OVERWRITE MODE
                 await db.clear('students');
-                for (const item of data.students) await db.put('students', item);
-             }
-             
-             if (data.schedules) {
                 await db.clear('schedules');
-                for (const item of data.schedules) await db.put('schedules', item);
-             }
-             
-             if (data.scans) {
                 await db.clear('scans');
-                for (const item of data.scans) await db.put('scans', item);
-             }
-             
-             if (data.behaviors) {
                 await db.clear('behaviors');
-                for (const item of data.behaviors) await db.put('behaviors', item);
              }
              
-             if (data.settings) {
-                for (const item of data.settings) await db.put('settings', item);
-             }
+             // MERGE/RESTORE DATA
+             if (data.students) for (const item of data.students) await db.put('students', item);
+             if (data.schedules) for (const item of data.schedules) await db.put('schedules', item);
+             if (data.scans) for (const item of data.scans) await db.put('scans', item);
+             if (data.behaviors) for (const item of data.behaviors) await db.put('behaviors', item);
+             if (data.settings) for (const item of data.settings) await db.put('settings', item);
 
-             toast.success('Data imported successfully! Reloading...');
-             setTimeout(() => window.location.reload(), 1000);
+             toast.success(mode ? 'Data merged successfully! Reloading...' : 'Data overwritten successfully! Reloading...');
+             setTimeout(() => window.location.reload(), 1500);
           } catch(err) {
-             toast.error('Invalid backup file');
+             toast.error('Invalid backup file or processing error');
           }
         };
         reader.readAsText(file);
