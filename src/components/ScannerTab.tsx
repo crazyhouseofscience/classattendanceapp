@@ -80,8 +80,10 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
   const getStudentStatus = (student: Student) => {
      // Attendance status is based on the EARLIEST Attendance scan
-     const attendanceScan = scans.find(s => s.studentId === student.id && s.movementType === 'Attendance');
-     const scan = attendanceScan || scans.find(s => s.studentId === student.id); // Fallback to first scan if movementType not set yet
+     const scan = scans.find(s => 
+       s.studentId === student.id && 
+       (s.movementType === 'Attendance' || (!s.movementType && !['Bathroom', 'Nurse', 'Office', 'Guidance', 'Returned'].includes(s.notes || '')))
+     );
 
      if (!scan) return { status: 'Absent', text: 'Absent', time: null, scanId: null };
      
@@ -756,34 +758,6 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                        </div>
                                     ) : (
                                        <div className="flex items-center gap-2.5">
-                                          <div className="flex gap-2 mr-1 pr-1 border-r border-slate-100 opacity-20 group-hover:opacity-100 transition-opacity">
-                                             {moveStatus?.out ? (
-                                                <Button 
-                                                   variant="secondary" 
-                                                   size="sm" 
-                                                   onClick={() => logMovement(student, null)}
-                                                   className="h-6 px-4 text-[10px] bg-amber-500 text-white font-black uppercase hover:bg-amber-600"
-                                                >
-                                                   IN ROOM
-                                                </Button>
-                                             ) : (
-                                                ['B', 'N', 'O', 'G'].map(char => {
-                                                  const labelMap: Record<string, string> = { 'B': 'Bathroom', 'N': 'Nurse', 'O': 'Office', 'G': 'Guidance' };
-                                                  return (
-                                                      <Button 
-                                                         key={char}
-                                                         variant="ghost" 
-                                                         size="sm" 
-                                                         onClick={() => logMovement(student, labelMap[char])}
-                                                         className="h-6 w-6 p-0 text-sm font-bold text-slate-300 hover:text-indigo-600 hover:bg-indigo-50"
-                                                         title={labelMap[char]}
-                                                      >
-                                                         {char}
-                                                      </Button>
-                                                  )
-                                                })
-                                             )}
-                                          </div>
                                           <Button variant="ghost" size="sm" onClick={() => toggleExcused(student)} className={`h-6 px-3 text-xs font-bold uppercase transition-colors ${statusInfo.excused ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-slate-600'}`}>
                                              {statusInfo.excused ? 'EXC' : 'PASS'}
                                           </Button>
