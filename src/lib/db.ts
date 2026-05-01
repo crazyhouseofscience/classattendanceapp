@@ -66,6 +66,7 @@ export interface MasterStudent {
   homeroom?: string;
   email?: string;
   gradebookRank?: string;
+  periods?: string[];
 }
 
 interface AppDB extends DBSchema {
@@ -171,5 +172,30 @@ export async function initDefaultData() {
   const activeSetting = await db.get('settings', 'activeScheduleId');
   if (!activeSetting) {
     await db.put('settings', { key: 'activeScheduleId', value: 'default' });
+  }
+
+  // MIGRATION: copy any students from 'roster' to 'students' if they don't exist
+  if (db.objectStoreNames.contains('roster')) {
+    try {
+      const rosterStudents = await db.getAll('roster');
+      const allStudents = await db.getAll('students');
+      const studentIds = new Set(allStudents.map(s => s.id));
+      for (const master of rosterStudents) {
+         if (!studentIds.has(master.id)) {
+            await db.put('students', {
+               id: master.id,
+               firstName: master.firstName,
+               lastName: master.lastName,
+               grade: master.grade,
+               homeroom: master.homeroom,
+               gradebookRank: master.gradebookRank,
+               email: master.email,
+               periods: master.periods || []
+            });
+         }
+      }
+    } catch(e) {
+      console.warn("Migration failed or not needed", e);
+    }
   }
 }

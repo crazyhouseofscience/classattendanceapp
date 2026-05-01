@@ -6,11 +6,12 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
 import { Label } from './ui/label';
-import { Search, Upload, Download, Trash2, RefreshCw, Users, Plus, Edit2 } from 'lucide-react';
+import { Search, Upload, Download, Trash2, RefreshCw, Users, Plus, Edit2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function RosterTab() {
   const [masterRoster, setMasterRoster] = useState<Student[]>([]);
+  const [knownPeriods, setKnownPeriods] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'rank' | 'id'>('lastName');
@@ -25,7 +26,8 @@ export default function RosterTab() {
     lastName: '',
     gradebookRank: '',
     homeroom: '',
-    email: ''
+    email: '',
+    periods: [] as string[]
   });
 
   useEffect(() => {
@@ -36,6 +38,16 @@ export default function RosterTab() {
     const db = await getDB();
     const students = await db.getAll('students') as Student[];
     setMasterRoster(students);
+    
+    // Also fetch all available periods for the periods multiselect/checks
+    const allSchedules = await db.getAll('schedules');
+    const periodsSet = new Set<string>();
+    for (const sch of allSchedules) {
+       for (const p of sch.periods) {
+          periodsSet.add(p.name);
+       }
+    }
+    setKnownPeriods(Array.from(periodsSet).sort());
   }
 
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,7 +127,7 @@ export default function RosterTab() {
 
   const handleOpenAddModal = () => {
     setEditingStudent(null);
-    setFormData({ id: '', firstName: '', lastName: '', gradebookRank: '', homeroom: '', email: '' });
+    setFormData({ id: '', firstName: '', lastName: '', gradebookRank: '', homeroom: '', email: '', periods: [] });
     setIsStudentModalOpen(true);
   };
 
@@ -127,7 +139,8 @@ export default function RosterTab() {
       lastName: student.lastName,
       gradebookRank: student.gradebookRank || '',
       homeroom: student.homeroom || '',
-      email: student.email || ''
+      email: student.email || '',
+      periods: student.periods || []
     });
     setIsStudentModalOpen(true);
   };
@@ -146,7 +159,7 @@ export default function RosterTab() {
          ...formData,
          grade: existing?.grade || '',
          notes: existing?.notes || '',
-         periods: existing?.periods || [],
+         periods: formData.periods,
          x: existing?.x,
          y: existing?.y
       };
@@ -261,6 +274,7 @@ export default function RosterTab() {
                 <TableHead className="font-bold cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('lastName')}>Last Name</TableHead>
                 <TableHead className="font-bold cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('firstName')}>First Name</TableHead>
                 <TableHead className="font-bold cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('rank')}>Rank</TableHead>
+                <TableHead className="font-bold">Periods</TableHead>
                 <TableHead className="font-bold">Homeroom</TableHead>
                 <TableHead className="font-bold">Email</TableHead>
                 <TableHead className="font-bold w-20 text-right">Actions</TableHead>
@@ -280,6 +294,7 @@ export default function RosterTab() {
                     <TableCell className="font-medium">{student.lastName}</TableCell>
                     <TableCell>{student.firstName}</TableCell>
                     <TableCell className="text-slate-500">{student.gradebookRank}</TableCell>
+                    <TableCell className="text-xs text-slate-500">{student.periods?.join(', ') || '-'}</TableCell>
                     <TableCell className="text-slate-500">{student.homeroom}</TableCell>
                     <TableCell className="text-slate-500 text-xs">{student.email}</TableCell>
                     <TableCell className="text-right">
@@ -362,6 +377,34 @@ export default function RosterTab() {
                 className="col-span-3"
               />
             </div>
+            {knownPeriods.length > 0 && (
+              <div className="grid grid-cols-4 items-start gap-4">
+                <Label className="text-right mt-2">Class Periods</Label>
+                <div className="col-span-3 grid grid-cols-2 gap-2 mt-1">
+                  {knownPeriods.map(p => {
+                    const isEnrolled = formData.periods.includes(p);
+                    return (
+                      <div 
+                        key={p}
+                        onClick={() => {
+                           setFormData(prev => ({
+                              ...prev,
+                              periods: isEnrolled ? prev.periods.filter(x => x !== p) : [...prev.periods, p]
+                           }))
+                        }}
+                        className={`border rounded-lg p-2 text-sm cursor-pointer flex items-center gap-2 transition-colors
+                          ${isEnrolled ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
+                      >
+                        <div className={`w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 ${isEnrolled ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300'}`}>
+                          {isEnrolled && <Check className="w-3 h-3 text-white" />}
+                        </div>
+                        <span className="truncate">{p}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsStudentModalOpen(false)}>Cancel</Button>
