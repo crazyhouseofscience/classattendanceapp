@@ -228,6 +228,16 @@ export default function App() {
     input.click();
   };
 
+  // Period mapping for Labs (e.g., "Period 4 Lab (P5 students)" -> "Period 5 (Honors Chem)")
+  const getEnrollmentPeriodName = (displayPeriod: string | null): string | null => {
+    if (!displayPeriod) return null;
+    if (displayPeriod.includes('Lab (P5 students)')) return 'Period 5 (Honors Chem)';
+    if (displayPeriod.includes('Lab (P3 students)')) return 'Period 3 (Honors Chem)';
+    return displayPeriod;
+  };
+
+  const enrollmentPeriodName = getEnrollmentPeriodName(activePeriodName);
+
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-2">
       {/* Top Banner - Slim version */}
@@ -322,11 +332,11 @@ export default function App() {
           </TabsList>
           
           <TabsContent value="scanner" className="pt-1">
-            <ScannerTab activeScheduleId={activeScheduleId} activePeriodName={activePeriodName} activeSchedule={activeSchedule} />
+            <ScannerTab activeScheduleId={activeScheduleId} activePeriodName={enrollmentPeriodName} activeSchedule={activeSchedule} />
           </TabsContent>
           
           <TabsContent value="students" className="pt-1">
-            <StudentsTab activePeriodName={activePeriodName} activeSchedule={activeSchedule} />
+            <StudentsTab activePeriodName={enrollmentPeriodName} activeSchedule={activeSchedule} />
           </TabsContent>
 
           <TabsContent value="roster" className="pt-1">
@@ -335,7 +345,7 @@ export default function App() {
 
           <TabsContent value="reports" className="pt-1">
             <ReportsTab 
-               activePeriodName={activePeriodName} 
+               activePeriodName={enrollmentPeriodName} 
                activeScheduleId={activeScheduleId} 
                activeSchedule={activeSchedule} 
                />
@@ -346,7 +356,7 @@ export default function App() {
           </TabsContent>
 
           <TabsContent value="behavior" className="pt-1">
-            <BehaviorTab activePeriodName={activePeriodName} activeScheduleId={activeScheduleId} />
+            <BehaviorTab activePeriodName={enrollmentPeriodName} activeScheduleId={activeScheduleId} />
           </TabsContent>
         </Tabs>
       </main>
