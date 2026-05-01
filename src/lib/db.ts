@@ -56,10 +56,24 @@ export interface Settings {
   value: any;
 }
 
+export interface MasterStudent {
+  id: string;
+  firstName: string;
+  lastName: string;
+  grade?: string;
+  homeroom?: string;
+  email?: string;
+  gradebookRank?: string;
+}
+
 interface AppDB extends DBSchema {
   students: {
     key: string;
     value: Student;
+  };
+  roster: {
+    key: string;
+    value: MasterStudent;
   };
   schedules: {
     key: string;
@@ -91,7 +105,7 @@ let dbPromise: Promise<IDBPDatabase<AppDB>> | null = null;
 
 export function getDB() {
   if (!dbPromise) {
-    dbPromise = openDB<AppDB>('barcode-scanner-db', 2, {
+    dbPromise = openDB<AppDB>('barcode-scanner-db', 3, {
       upgrade(db, oldVersion, newVersion, transaction) {
         if (oldVersion < 1) {
           db.createObjectStore('students', { keyPath: 'id' });
@@ -108,6 +122,12 @@ export function getDB() {
           const behaviorStore = db.createObjectStore('behaviors', { keyPath: 'id' });
           behaviorStore.createIndex('by-date', 'date');
           behaviorStore.createIndex('by-student', 'studentId');
+        }
+
+        if (oldVersion < 3) {
+          if (!db.objectStoreNames.contains('roster')) {
+            db.createObjectStore('roster', { keyPath: 'id' });
+          }
         }
       },
     });

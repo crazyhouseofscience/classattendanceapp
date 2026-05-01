@@ -59,6 +59,7 @@ export async function backupToDrive(isAuto = false) {
     // 1. Gather all data
     const db = await getDB();
     const students = await db.getAll('students');
+    const roster = await db.getAll('roster');
     const schedules = await db.getAll('schedules');
     const scans = await db.getAll('scans');
     const behaviors = await db.getAll('behaviors');
@@ -66,12 +67,13 @@ export async function backupToDrive(isAuto = false) {
     
     const exportData = {
       students,
+      roster,
       schedules,
       scans,
       behaviors,
       settings,
       exportDate: new Date().toISOString(),
-      version: '1.1'
+      version: '1.2'
     };
     
     const fileContent = JSON.stringify(exportData, null, 2);

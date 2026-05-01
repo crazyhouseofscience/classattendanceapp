@@ -10,6 +10,7 @@ import { ScannerTab } from './components/ScannerTab';
 import { StudentsTab } from './components/StudentsTab';
 import { SchedulesTab } from './components/SchedulesTab';
 import { ReportsTab } from './components/ReportsTab';
+import RosterTab from './components/RosterTab';
 import { BehaviorTab } from './components/BehaviorTab';
 import { initDefaultData, getDB, Schedule } from './lib/db';
 import { backupToDrive, initGoogleIdentity } from './lib/gdrive';
@@ -147,6 +148,7 @@ export default function App() {
     try {
       const db = await getDB();
       const students = await db.getAll('students');
+      const roster = await db.getAll('roster');
       const schedules = await db.getAll('schedules');
       const scans = await db.getAll('scans');
       const behaviors = await db.getAll('behaviors');
@@ -154,12 +156,13 @@ export default function App() {
       
       const exportData = {
         students,
+        roster,
         schedules,
         scans,
         behaviors,
         settings,
         exportDate: new Date().toISOString(),
-        version: '1.1'
+        version: '1.2'
       };
       
       const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
@@ -205,6 +208,7 @@ export default function App() {
              
              // MERGE/RESTORE DATA
              if (data.students) for (const item of data.students) await db.put('students', item);
+             if (data.roster) for (const item of data.roster) await db.put('roster', item);
              if (data.schedules) for (const item of data.schedules) await db.put('schedules', item);
              if (data.scans) for (const item of data.scans) await db.put('scans', item);
              if (data.behaviors) for (const item of data.behaviors) await db.put('behaviors', item);
@@ -311,6 +315,7 @@ export default function App() {
           <TabsList className="bg-slate-100 border p-0.5 h-7 w-fit">
             <TabsTrigger value="scanner" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Scanner</TabsTrigger>
             <TabsTrigger value="students" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Students</TabsTrigger>
+            <TabsTrigger value="roster" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Roster</TabsTrigger>
             <TabsTrigger value="reports" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Reports</TabsTrigger>
             <TabsTrigger value="behavior" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Behavior</TabsTrigger>
             <TabsTrigger value="schedules" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Schedules</TabsTrigger>
@@ -322,6 +327,10 @@ export default function App() {
           
           <TabsContent value="students" className="pt-1">
             <StudentsTab activePeriodName={activePeriodName} activeSchedule={activeSchedule} />
+          </TabsContent>
+
+          <TabsContent value="roster" className="pt-1">
+            <RosterTab />
           </TabsContent>
 
           <TabsContent value="reports" className="pt-1">
