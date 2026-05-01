@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { getDB, MasterStudent } from '../lib/db';
+import { getDB, Student } from '../lib/db';
 import { triggerAutoBackup } from '../lib/gdrive';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Button } from './ui/button';
@@ -10,7 +10,7 @@ import { Search, Upload, Download, Trash2, RefreshCw, Users, Plus, Edit2 } from 
 import { toast } from 'sonner';
 
 export default function RosterTab() {
-  const [masterRoster, setMasterRoster] = useState<MasterStudent[]>([]);
+  const [masterRoster, setMasterRoster] = useState<Student[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'rank' | 'id'>('lastName');
@@ -18,7 +18,7 @@ export default function RosterTab() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
-  const [editingStudent, setEditingStudent] = useState<MasterStudent | null>(null);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
   const [formData, setFormData] = useState({
     id: '',
     firstName: '',
@@ -34,7 +34,7 @@ export default function RosterTab() {
 
   async function loadRoster() {
     const db = await getDB();
-    const students = await db.getAll('roster') as MasterStudent[];
+    const students = await db.getAll('students') as Student[];
     setMasterRoster(students);
   }
 
@@ -58,20 +58,26 @@ export default function RosterTab() {
           
           const parts = line.split(',').map(p => p.trim().replace(/^"|"$/g, ''));
           if (parts.length >= 3) {
-            const student: MasterStudent = {
+            const existing = await db.get('students', parts[0]);
+            const student: Student = {
               id: parts[0], // barcode
               firstName: parts[1],
               lastName: parts[2],
-              gradebookRank: parts[3] || '',
-              homeroom: parts[4] || '',
-              email: parts[5] || ''
+              gradebookRank: parts[3] || (existing?.gradebookRank || ''),
+              homeroom: parts[4] || (existing?.homeroom || ''),
+              email: parts[5] || (existing?.email || ''),
+              grade: existing?.grade || '',
+              notes: existing?.notes || '',
+              periods: existing?.periods || [],
+              x: existing?.x,
+              y: existing?.y
             };
-            await db.put('roster', student);
+            await db.put('students', student);
             imported++;
           }
         }
         
-        toast.success(`Successfully imported ${imported} students to Master Roster`);
+        toast.success(`Successfully imported/updated ${imported} students in the Roster`);
         loadRoster();
         triggerAutoBackup();
       } catch (err) {
@@ -99,12 +105,12 @@ export default function RosterTab() {
   };
 
   const clearRoster = async () => {
-    if (!window.confirm("Are you sure? This will delete the entire stored Master Roster. This does NOT delete scanning data, just the source student list.")) return;
+    if (!window.confirm("Are you sure? This will delete ALL students from the entire database, including from your class rosters.")) return;
     const db = await getDB();
-    await db.clear('roster');
+    await db.clear('students');
     loadRoster();
     triggerAutoBackup();
-    toast.success("Master Roster cleared");
+    toast.success("All students cleared from the system");
   };
 
   const handleOpenAddModal = () => {
@@ -113,7 +119,7 @@ export default function RosterTab() {
     setIsStudentModalOpen(true);
   };
 
-  const handleOpenEditModal = (student: MasterStudent) => {
+  const handleOpenEditModal = (student: Student) => {
     setEditingStudent(student);
     setFormData({
       id: student.id,
@@ -134,8 +140,23 @@ export default function RosterTab() {
     
     try {
       const db = await getDB();
-      const student: MasterStudent = { ...formData };
-      await db.put('roster', student);
+      const existing = editingStudent ? await db.get('students', editingStudent.id) : null;
+      
+      const student: Student = { 
+         ...formData,
+         grade: existing?.grade || '',
+         notes: existing?.notes || '',
+         periods: existing?.periods || [],
+         x: existing?.x,
+         y: existing?.y
+      };
+      
+      // If we are changing the ID itself during edit... wait, barcode ID shouldn't be mutable or if it is, we need to delete the old one.
+      if (editingStudent && editingStudent.id !== formData.id) {
+         await db.delete('students', editingStudent.id);
+      }
+      
+      await db.put('students', student);
       
       toast.success(editingStudent ? "Student updated" : "Student added");
       setIsStudentModalOpen(false);
@@ -147,63 +168,16 @@ export default function RosterTab() {
   };
 
   const handleDeleteStudent = async (id: string, name: string) => {
-    if (!window.confirm(`Are you sure you want to delete ${name} from the master roster?`)) return;
+    if (!window.confirm(`Are you sure you want to delete ${name} from the roster completely?`)) return;
     
     try {
       const db = await getDB();
-      await db.delete('roster', id);
-      toast.success("Student removed from master roster");
+      await db.delete('students', id);
+      toast.success("Student removed from system");
       loadRoster();
       triggerAutoBackup();
     } catch (error) {
       toast.error("Failed to delete student");
-    }
-  };
-
-  const rolloutToActive = async () => {
-    if (masterRoster.length === 0) {
-      toast.error("Master Roster is empty. Import a CSV first.");
-      return;
-    }
-
-    if (!window.confirm(`Roll out ${masterRoster.length} students to Active Roster? This will update existing students and add new ones (it won't delete scans).`)) return;
-
-    try {
-      const db = await getDB();
-      let updated = 0;
-      let added = 0;
-
-      for (const ms of masterRoster) {
-        const existing = await db.get('students', ms.id);
-        if (existing) {
-          // Update details but keep periods and coordinates
-          const updatedStudent = {
-            ...existing,
-            firstName: ms.firstName,
-            lastName: ms.lastName,
-            gradebookRank: ms.gradebookRank || existing.gradebookRank
-          };
-          await db.put('students', updatedStudent);
-          updated++;
-        } else {
-          // New student
-          await db.put('students', {
-            id: ms.id,
-            firstName: ms.firstName,
-            lastName: ms.lastName,
-            gradebookRank: ms.gradebookRank,
-            grade: ms.grade || '',
-            notes: '',
-            periods: []
-          });
-          added++;
-        }
-      }
-
-      toast.success(`Rollout complete: ${added} added, ${updated} updated in active records.`);
-      triggerAutoBackup();
-    } catch (e) {
-      toast.error("Rollout failed");
     }
   };
 
@@ -272,9 +246,6 @@ export default function RosterTab() {
           <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-2">
             <Download className="w-4 h-4" /> Export CSV
           </Button>
-          <Button variant="default" size="sm" onClick={rolloutToActive} className="gap-2 bg-indigo-600 hover:bg-indigo-700">
-            <RefreshCw className="w-4 h-4" /> Roll Out
-          </Button>
           <Button variant="ghost" size="sm" onClick={clearRoster} className="text-red-500 hover:text-red-600 hover:bg-red-50">
             <Trash2 className="w-4 h-4" />
           </Button>
@@ -326,9 +297,6 @@ export default function RosterTab() {
               )}
             </TableBody>
           </Table>
-        </div>
-        <div className="mt-4 p-4 bg-amber-50 border border-amber-100 rounded-lg text-amber-800 text-sm">
-          <strong>Note:</strong> Rolling out will sync your master list with active scanning records. It updates names/ranks but <strong>will not</strong> erase current attendance, points, or period enrollments.
         </div>
       </div>
 

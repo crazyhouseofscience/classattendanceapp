@@ -10,6 +10,8 @@ export interface Student {
   periods?: string[]; // Array of period names this student is assigned to
   x?: number;
   y?: number;
+  homeroom?: string;
+  email?: string;
 }
 
 export interface PeriodConfig {
