@@ -4,7 +4,9 @@ import { triggerAutoBackup } from '../lib/gdrive';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
-import { Search, Upload, Download, Trash2, RefreshCw, Users } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
+import { Label } from './ui/label';
+import { Search, Upload, Download, Trash2, RefreshCw, Users, Plus, Edit2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function RosterTab() {
@@ -12,6 +14,17 @@ export default function RosterTab() {
   const [searchTerm, setSearchTerm] = useState('');
   const [isImporting, setIsImporting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<MasterStudent | null>(null);
+  const [formData, setFormData] = useState({
+    id: '',
+    firstName: '',
+    lastName: '',
+    gradebookRank: '',
+    homeroom: '',
+    email: ''
+  });
 
   useEffect(() => {
     loadRoster();
@@ -92,6 +105,59 @@ export default function RosterTab() {
     toast.success("Master Roster cleared");
   };
 
+  const handleOpenAddModal = () => {
+    setEditingStudent(null);
+    setFormData({ id: '', firstName: '', lastName: '', gradebookRank: '', homeroom: '', email: '' });
+    setIsStudentModalOpen(true);
+  };
+
+  const handleOpenEditModal = (student: MasterStudent) => {
+    setEditingStudent(student);
+    setFormData({
+      id: student.id,
+      firstName: student.firstName,
+      lastName: student.lastName,
+      gradebookRank: student.gradebookRank || '',
+      homeroom: student.homeroom || '',
+      email: student.email || ''
+    });
+    setIsStudentModalOpen(true);
+  };
+
+  const handleSaveStudent = async () => {
+    if (!formData.id || !formData.firstName || !formData.lastName) {
+      toast.error("ID, First Name, and Last Name are required");
+      return;
+    }
+    
+    try {
+      const db = await getDB();
+      const student: MasterStudent = { ...formData };
+      await db.put('roster', student);
+      
+      toast.success(editingStudent ? "Student updated" : "Student added");
+      setIsStudentModalOpen(false);
+      loadRoster();
+      triggerAutoBackup();
+    } catch (error) {
+      toast.error("Failed to save student");
+    }
+  };
+
+  const handleDeleteStudent = async (id: string, name: string) => {
+    if (!window.confirm(`Are you sure you want to delete ${name} from the master roster?`)) return;
+    
+    try {
+      const db = await getDB();
+      await db.delete('roster', id);
+      toast.success("Student removed from master roster");
+      loadRoster();
+      triggerAutoBackup();
+    } catch (error) {
+      toast.error("Failed to delete student");
+    }
+  };
+
   const rolloutToActive = async () => {
     if (masterRoster.length === 0) {
       toast.error("Master Roster is empty. Import a CSV first.");
@@ -167,6 +233,9 @@ export default function RosterTab() {
             />
           </div>
           
+          <Button variant="default" size="sm" onClick={handleOpenAddModal} className="gap-2 bg-indigo-600 hover:bg-indigo-700">
+            <Plus className="w-4 h-4" /> Add Student
+          </Button>
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -200,12 +269,13 @@ export default function RosterTab() {
                 <TableHead className="font-bold">Rank</TableHead>
                 <TableHead className="font-bold">Homeroom</TableHead>
                 <TableHead className="font-bold">Email</TableHead>
+                <TableHead className="font-bold w-20 text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-32 text-center text-slate-400">
+                  <TableCell colSpan={7} className="h-32 text-center text-slate-400">
                     No students in master roster. Import a CSV to get started.
                   </TableCell>
                 </TableRow>
@@ -218,6 +288,16 @@ export default function RosterTab() {
                     <TableCell className="text-slate-500">{student.gradebookRank}</TableCell>
                     <TableCell className="text-slate-500">{student.homeroom}</TableCell>
                     <TableCell className="text-slate-500 text-xs">{student.email}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-indigo-600" onClick={() => handleOpenEditModal(student)}>
+                          <Edit2 className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-red-600" onClick={() => handleDeleteStudent(student.id, `${student.firstName} ${student.lastName}`)}>
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))
               )}
@@ -228,6 +308,76 @@ export default function RosterTab() {
           <strong>Note:</strong> Rolling out will sync your master list with active scanning records. It updates names/ranks but <strong>will not</strong> erase current attendance, points, or period enrollments.
         </div>
       </div>
+
+      <Dialog open={isStudentModalOpen} onOpenChange={setIsStudentModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{editingStudent ? 'Edit Student' : 'Add Student'}</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="id" className="text-right">Barcode ID</Label>
+              <Input
+                id="id"
+                value={formData.id}
+                onChange={(e) => setFormData(p => ({ ...p, id: e.target.value }))}
+                className="col-span-3"
+                disabled={!!editingStudent}
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="firstName" className="text-right">First Name</Label>
+              <Input
+                id="firstName"
+                value={formData.firstName}
+                onChange={(e) => setFormData(p => ({ ...p, firstName: e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="lastName" className="text-right">Last Name</Label>
+              <Input
+                id="lastName"
+                value={formData.lastName}
+                onChange={(e) => setFormData(p => ({ ...p, lastName: e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="gradebookRank" className="text-right">Rank</Label>
+              <Input
+                id="gradebookRank"
+                value={formData.gradebookRank}
+                onChange={(e) => setFormData(p => ({ ...p, gradebookRank: e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="homeroom" className="text-right">Homeroom</Label>
+              <Input
+                id="homeroom"
+                value={formData.homeroom}
+                onChange={(e) => setFormData(p => ({ ...p, homeroom: e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="email" className="text-right">Email</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData(p => ({ ...p, email: e.target.value }))}
+                className="col-span-3"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsStudentModalOpen(false)}>Cancel</Button>
+            <Button onClick={handleSaveStudent}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
