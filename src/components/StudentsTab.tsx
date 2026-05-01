@@ -26,6 +26,8 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
   const [isMappingDialogOpen, setIsMappingDialogOpen] = useState(false);
   const [csvData, setCsvData] = useState<any[]>([]);
   const [csvHeaders, setCsvHeaders] = useState<string[]>([]);
+  const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'rank' | 'id'>('lastName');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [columnMapping, setColumnMapping] = useState<{id: string, firstName: string, lastName: string, name: string, grade: string, gradebookRank: string, periods: string[]}>({
     id: '', firstName: '', lastName: '', name: '', periods: [], grade: '', gradebookRank: ''
   });
@@ -254,9 +256,32 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
     }
   };
 
-  const students = (activePeriodName && activePeriodName !== 'all') 
+  const baseStudents = (activePeriodName && activePeriodName !== 'all') 
     ? allStudents.filter(s => isStudentInPeriod(s, activePeriodName))
     : allStudents;
+
+  const students = baseStudents.sort((a, b) => {
+    let result = 0;
+    if (sortBy === 'firstName') {
+      result = (a.firstName || '').localeCompare(b.firstName || '');
+    } else if (sortBy === 'lastName') {
+      result = (a.lastName || '').localeCompare(b.lastName || '');
+    } else if (sortBy === 'id') {
+      result = (a.id || '').localeCompare(b.id || '');
+    } else if (sortBy === 'rank') {
+      result = parseInt(a.gradebookRank || '9999') - parseInt(b.gradebookRank || '9999');
+    }
+    return sortOrder === 'asc' ? result : -result;
+  });
+
+  const toggleSort = (field: 'firstName' | 'lastName' | 'rank' | 'id') => {
+    if (sortBy === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
 
   const unassignedStudents = (activePeriodName && activePeriodName !== 'all')
     ? allStudents.filter(s => !isStudentInPeriod(s, activePeriodName))
@@ -518,11 +543,11 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
         <Table>
           <TableHeader className="bg-slate-50">
             <TableRow>
-              <TableHead>ID/Barcode</TableHead>
-              <TableHead>First Name</TableHead>
-              <TableHead>Last Name</TableHead>
+              <TableHead className="cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('id')}>ID/Barcode</TableHead>
+              <TableHead className="cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('firstName')}>First Name</TableHead>
+              <TableHead className="cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('lastName')}>Last Name</TableHead>
               <TableHead>Grade</TableHead>
-              <TableHead>Rank</TableHead>
+              <TableHead className="cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('rank')}>Rank</TableHead>
               <TableHead>Periods</TableHead>
               <TableHead className="w-16">Actions</TableHead>
             </TableRow>

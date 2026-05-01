@@ -74,6 +74,8 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
         filtered.sort((a, b) => (a.studentInfo?.firstName || '').localeCompare(b.studentInfo?.firstName || ''));
       } else if (sortBy === 'rank') {
         filtered.sort((a, b) => parseInt(a.studentInfo?.gradebookRank || '9999') - parseInt(b.studentInfo?.gradebookRank || '9999'));
+    } else if (sortBy === 'id') {
+        filtered.sort((a, b) => (a.studentId || '').localeCompare(b.studentId || ''));
       } else if (sortBy === 'status') {
         filtered.sort((a, b) => {
           const statusA = getScanStatus(a).status;
@@ -159,6 +161,10 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
   if (activeTab === 'student-summary') {
       if (sortBy === 'lastName') {
           studentsToDisplay.sort((a, b) => a.lastName.localeCompare(b.lastName));
+      } else if (sortBy === 'firstName') {
+          studentsToDisplay.sort((a, b) => a.firstName.localeCompare(b.firstName));
+      } else if (sortBy === 'id') {
+          studentsToDisplay.sort((a, b) => a.id.localeCompare(b.id));
       } else if (sortBy === 'rank') {
           studentsToDisplay.sort((a, b) => parseInt(a.gradebookRank || '9999') - parseInt(b.gradebookRank || '9999'));
       } else if (sortBy === 'pos') {
@@ -309,6 +315,7 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
          <div className="flex bg-slate-100 rounded-lg p-0.5 shrink-0">
              <Button variant={sortBy === 'lastName' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('lastName')} className={`h-7 px-3 text-[10px] font-bold uppercase ${sortBy === 'lastName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Last</Button>
              <Button variant={sortBy === 'firstName' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('firstName')} className={`h-7 px-3 text-[10px] font-bold uppercase ${sortBy === 'firstName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>First</Button>
+             <Button variant={sortBy === 'id' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('id')} className={`h-7 px-3 text-[10px] font-bold uppercase ${sortBy === 'id' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>ID</Button>
              <Button variant={sortBy === 'rank' ? 'secondary' : 'ghost'} size="sm" onClick={() => setSortBy('rank')} className={`h-7 px-3 text-[10px] font-bold uppercase ${sortBy === 'rank' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}>Rank</Button>
              {activeTab === 'logs' && (
                <>
@@ -334,7 +341,7 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
                 <TableRow className="hover:bg-transparent border-slate-200">
                   <TableHead onClick={() => setSortBy('time')} className="text-[10px] font-bold uppercase text-slate-500 h-10 cursor-pointer hover:text-indigo-600">Time</TableHead>
                   <TableHead className="text-[10px] font-bold uppercase text-slate-500 h-10">Period</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 h-10">ID</TableHead>
+                  <TableHead onClick={() => setSortBy('id')} className="text-[10px] font-bold uppercase text-slate-500 h-10 cursor-pointer hover:text-indigo-600">ID</TableHead>
                   <TableHead onClick={() => setSortBy(sortBy === 'lastName' ? 'firstName' : 'lastName')} className="text-[10px] font-bold uppercase text-slate-500 h-10 cursor-pointer hover:text-indigo-600">Student Name</TableHead>
                   <TableHead onClick={() => setSortBy('status')} className="text-[10px] font-bold uppercase text-slate-500 h-10 cursor-pointer hover:text-indigo-600">Status</TableHead>
                 </TableRow>
@@ -372,11 +379,12 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
             <Table>
               <TableHeader className="bg-slate-50/50">
                 <TableRow className="hover:bg-transparent border-slate-200">
-                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 h-10">Student Name</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 text-center h-10">Abs</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 text-center h-10">Late</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 text-center h-10">Pos</TableHead>
-                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 text-center h-10">Neg</TableHead>
+                  <TableHead onClick={() => setSortBy('id')} className="text-[10px] font-bold uppercase text-slate-500 h-10 cursor-pointer hover:text-indigo-600">ID</TableHead>
+                  <TableHead onClick={() => setSortBy(sortBy === 'lastName' ? 'firstName' : 'lastName')} className="text-[10px] font-bold uppercase text-slate-500 h-10 cursor-pointer hover:text-indigo-600">Student Name</TableHead>
+                  <TableHead onClick={() => setSortBy('abs')} className="text-[10px] font-bold uppercase text-slate-500 text-center h-10 cursor-pointer hover:text-indigo-600">Abs</TableHead>
+                  <TableHead onClick={() => setSortBy('late')} className="text-[10px] font-bold uppercase text-slate-500 text-center h-10 cursor-pointer hover:text-indigo-600">Late</TableHead>
+                  <TableHead onClick={() => setSortBy('pos')} className="text-[10px] font-bold uppercase text-slate-500 text-center h-10 cursor-pointer hover:text-indigo-600">Pos</TableHead>
+                  <TableHead onClick={() => setSortBy('neg')} className="text-[10px] font-bold uppercase text-slate-500 text-center h-10 cursor-pointer hover:text-indigo-600">Neg</TableHead>
                   <TableHead className="text-[10px] font-bold uppercase text-slate-500 text-right h-10">Score</TableHead>
                 </TableRow>
               </TableHeader>
@@ -385,6 +393,7 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
                   const stats = getStatsForStudent(student.id);
                   return (
                     <TableRow key={student.id} className="hover:bg-slate-50/50 transition-colors border-slate-100">
+                      <TableCell className="text-[11px] font-mono text-slate-500">{student.id}</TableCell>
                       <TableCell className="text-[11px] font-bold text-slate-700">{student.firstName} {student.lastName}</TableCell>
                       <TableCell className="text-[11px] text-center font-mono text-red-500 font-bold">{stats.abs}</TableCell>
                       <TableCell className="text-[11px] text-center font-mono text-amber-600 font-bold">{stats.lates}</TableCell>

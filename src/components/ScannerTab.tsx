@@ -111,7 +111,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
      return { status: 'OnTime', text: 'On Time', time: scan.timestamp, excused: !!scan.isExcused, noPass: !!scan.hasNoPass, scanId: scan.id };
   };
 
-  const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status' | 'rank'>('lastName');
+  const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status' | 'rank' | 'id'>('lastName');
   const [elapsedTime, setElapsedTime] = useState<string>('00:00');
   const [manualStartTimeInternal, setManualStartTimeInternal] = useState<string | null>(null);
   const [manualEndTimeInternal, setManualEndTimeInternal] = useState<string | null>(null);
@@ -192,6 +192,10 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     
     if (sortBy === 'firstName') {
        return a.firstName.localeCompare(b.firstName) || a.lastName.localeCompare(b.lastName);
+    }
+
+    if (sortBy === 'id') {
+       return a.id.localeCompare(b.id);
     }
 
     if (sortBy === 'rank') {
@@ -686,6 +690,14 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                     className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'rank' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
                  >
                     Rank
+                 </Button>
+                 <Button 
+                    variant={sortBy === 'id' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setSortBy('id')}
+                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'id' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                 >
+                    ID
                  </Button>
               </div>
            )}

@@ -30,7 +30,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
   const [absentStudents, setAbsentStudents] = useState<Set<string>>(new Set());
   const [lateStudents, setLateStudents] = useState<Set<string>>(new Set());
   const [showOnlyActive, setShowOnlyActive] = useState(false);
-  const [sortBy, setSortBy] = useState<'lastName' | 'firstName' | 'points'>('lastName');
+  const [sortBy, setSortBy] = useState<'lastName' | 'firstName' | 'points' | 'rank' | 'id'>('lastName');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [selectedStudentForHistory, setSelectedStudentForHistory] = useState<Student | null>(null);
   const [newComment, setNewComment] = useState('');
@@ -91,6 +91,14 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
             return sortOrder === 'asc' 
                 ? a.firstName.localeCompare(b.firstName) 
                 : b.firstName.localeCompare(a.firstName);
+        } else if (sortBy === 'rank') {
+            return sortOrder === 'asc' 
+                ? parseInt(a.gradebookRank || '9999') - parseInt(b.gradebookRank || '9999')
+                : parseInt(b.gradebookRank || '9999') - parseInt(a.gradebookRank || '9999');
+        } else if (sortBy === 'id') {
+            return sortOrder === 'asc' 
+                ? a.id.localeCompare(b.id) 
+                : b.id.localeCompare(a.id);
         } else {
             const aPoints = todayBehaviors.filter(beh => beh.studentId === a.id).reduce((sum, beh) => sum + beh.points, 0);
             const bPoints = todayBehaviors.filter(beh => beh.studentId === b.id).reduce((sum, beh) => sum + beh.points, 0);
@@ -372,6 +380,12 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
                         setSortBy('firstName');
                         setSortOrder('asc');
                     } else if (sortBy === 'firstName') {
+                        setSortBy('rank');
+                        setSortOrder('asc');
+                    } else if (sortBy === 'rank') {
+                        setSortBy('id');
+                        setSortOrder('asc');
+                    } else if (sortBy === 'id') {
                         setSortBy('points');
                         setSortOrder('desc');
                     } else {
@@ -384,7 +398,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
                     "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
                 )}
             >
-                Sort: {sortBy === 'lastName' ? 'Last Name' : sortBy === 'firstName' ? 'First Name' : 'Points'} ({sortOrder === 'asc' ? 'A-Z' : 'Desc'})
+                Sort: {sortBy === 'lastName' ? 'Last Name' : sortBy === 'firstName' ? 'First Name' : sortBy === 'rank' ? 'Rank' : sortBy === 'id' ? 'ID' : 'Points'} ({sortOrder === 'asc' ? 'A-Z' : 'Desc'})
             </button>
 
             <button

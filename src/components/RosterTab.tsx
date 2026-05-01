@@ -13,6 +13,8 @@ export default function RosterTab() {
   const [masterRoster, setMasterRoster] = useState<MasterStudent[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isImporting, setIsImporting] = useState(false);
+  const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'rank' | 'id'>('lastName');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   const [isStudentModalOpen, setIsStudentModalOpen] = useState(false);
@@ -33,7 +35,7 @@ export default function RosterTab() {
   async function loadRoster() {
     const db = await getDB();
     const students = await db.getAll('roster') as MasterStudent[];
-    setMasterRoster(students.sort((a, b) => a.lastName.localeCompare(b.lastName)));
+    setMasterRoster(students);
   }
 
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,7 +209,28 @@ export default function RosterTab() {
 
   const filtered = masterRoster.filter(s => 
     `${s.firstName} ${s.lastName} ${s.id} ${s.homeroom}`.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ).sort((a, b) => {
+    let result = 0;
+    if (sortBy === 'firstName') {
+      result = (a.firstName || '').localeCompare(b.firstName || '');
+    } else if (sortBy === 'lastName') {
+      result = (a.lastName || '').localeCompare(b.lastName || '');
+    } else if (sortBy === 'id') {
+      result = (a.id || '').localeCompare(b.id || '');
+    } else if (sortBy === 'rank') {
+      result = parseInt(a.gradebookRank || '9999') - parseInt(b.gradebookRank || '9999');
+    }
+    return sortOrder === 'asc' ? result : -result;
+  });
+
+  const toggleSort = (field: 'firstName' | 'lastName' | 'rank' | 'id') => {
+    if (sortBy === field) {
+      setSortOrder(prev => prev === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(field);
+      setSortOrder('asc');
+    }
+  };
 
   return (
     <div className="flex flex-col h-full bg-slate-50/50">
@@ -263,10 +286,10 @@ export default function RosterTab() {
           <Table>
             <TableHeader className="bg-slate-50">
               <TableRow>
-                <TableHead className="w-24 font-bold">ID / Barcode</TableHead>
-                <TableHead className="font-bold">Last Name</TableHead>
-                <TableHead className="font-bold">First Name</TableHead>
-                <TableHead className="font-bold">Rank</TableHead>
+                <TableHead className="w-24 font-bold cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('id')}>ID / Barcode</TableHead>
+                <TableHead className="font-bold cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('lastName')}>Last Name</TableHead>
+                <TableHead className="font-bold cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('firstName')}>First Name</TableHead>
+                <TableHead className="font-bold cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('rank')}>Rank</TableHead>
                 <TableHead className="font-bold">Homeroom</TableHead>
                 <TableHead className="font-bold">Email</TableHead>
                 <TableHead className="font-bold w-20 text-right">Actions</TableHead>
