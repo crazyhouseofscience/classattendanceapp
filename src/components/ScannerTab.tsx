@@ -23,7 +23,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const [lastScan, setLastScan] = useState<{ student: Student | null, barcode?: string, status: 'success' | 'unknown_barcode' | 'not_in_period', timestamp: number } | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [scans, setScans] = useState<(ScanEvent & { studentInfo?: Student })[]>([]);
-  const [gracePeriodInternal, setGracePeriodInternal] = useState(5);
+  const [gracePeriod, setGracePeriodState] = useState(5);
   const [scanReason, setScanReason] = useState<string | null>(null);
 
   const [editingScanId, setEditingScanId] = useState<string | null>(null);
@@ -53,17 +53,24 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     setEditingScanId(null);
   };
 
-  useEffect(() => {
-    const saved = localStorage.getItem('grace_period');
-    if (saved) setGracePeriodInternal(parseInt(saved));
-  }, []);
+  async function loadSettings() {
+    const db = await getDB();
+    const gpSetting = await db.get('settings', 'grace_period');
+    if (gpSetting) setGracePeriodState(gpSetting.value);
+    
+    const key = getOverrideKey();
+    const endKey = getOverrideEndKey();
+    const startSetting = await db.get('settings', key);
+    const endSetting = await db.get('settings', endKey);
+    setManualStartTimeInternal(startSetting?.value || null);
+    setManualEndTimeInternal(endSetting?.value || null);
+  }
 
-  const setGracePeriod = (val: number) => {
-    localStorage.setItem('grace_period', val.toString());
-    setGracePeriodInternal(val);
+  const setGracePeriod = async (val: number) => {
+    const db = await getDB();
+    await db.put('settings', { key: 'grace_period', value: val });
+    setGracePeriodState(val);
   };
-  
-  const gracePeriod = gracePeriodInternal;
 
   const [view, setView] = useState<'attendance' | 'movement'>('attendance');
 
@@ -109,17 +116,19 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const getOverrideKey = () => `override_${format(new Date(), 'yyyy-MM-dd')}_${activeScheduleId}_${activePeriodName}`;
   const getOverrideEndKey = () => `override_end_${format(new Date(), 'yyyy-MM-dd')}_${activeScheduleId}_${activePeriodName}`;
 
-  const setManualStartTime = (time: string | null) => {
+  const setManualStartTime = async (time: string | null) => {
     const key = getOverrideKey();
-    if (time) localStorage.setItem(key, time);
-    else localStorage.removeItem(key);
+    const db = await getDB();
+    if (time) await db.put('settings', { key, value: time });
+    else await db.delete('settings', key);
     setManualStartTimeInternal(time);
   };
 
-  const setManualEndTime = (time: string | null) => {
+  const setManualEndTime = async (time: string | null) => {
     const key = getOverrideEndKey();
-    if (time) localStorage.setItem(key, time);
-    else localStorage.removeItem(key);
+    const db = await getDB();
+    if (time) await db.put('settings', { key, value: time });
+    else await db.delete('settings', key);
     setManualEndTimeInternal(time);
   };
 
@@ -127,10 +136,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const manualEndTime = manualEndTimeInternal;
 
   useEffect(() => {
-    const key = getOverrideKey();
-    const endKey = getOverrideEndKey();
-    setManualStartTimeInternal(localStorage.getItem(key));
-    setManualEndTimeInternal(localStorage.getItem(endKey));
+    loadSettings();
   }, [activePeriodName, activeScheduleId]);
 
   useEffect(() => {

@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { format } from 'date-fns';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { FileDown } from 'lucide-react';
+import { FileDown, CloudUpload } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface ReportsTabProps {
@@ -23,10 +23,29 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
   const [startDate, setStartDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   const [sortBy, setSortBy] = useState<'time' | 'firstName' | 'lastName' | 'rank' | 'pos' | 'neg' | 'abs' | 'late'>('lastName');
+  const [gracePeriod, setGracePeriod] = useState(5);
+  const [manualStartTimes, setManualStartTimes] = useState<Record<string, string>>({});
 
   useEffect(() => {
     loadData();
+    loadSettings();
   }, [startDate, endDate, activePeriodName, sortBy, activeTab]);
+
+  async function loadSettings() {
+    const db = await getDB();
+    const gpSetting = await db.get('settings', 'grace_period');
+    if (gpSetting) setGracePeriod(gpSetting.value);
+
+    // Load overrides for the visible range (simple approach: load all starting with 'override_')
+    const allSettings = await db.getAll('settings');
+    const overrides: Record<string, string> = {};
+    allSettings.forEach(s => {
+      if (s.key.startsWith('override_') && !s.key.startsWith('override_end_')) {
+        overrides[s.key] = s.value;
+      }
+    });
+    setManualStartTimes(overrides);
+  }
 
   async function loadData() {
     const db = await getDB();
@@ -86,9 +105,8 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
     }
 
     const periodConfig = activeSchedule?.periods.find(p => p.name === scan.periodName);
-    const gracePeriod = parseInt(localStorage.getItem('grace_period') || '5');
     const overrideKey = `override_${scan.date}_${activeScheduleId}_${scan.periodName}`;
-    const manualStartTime = localStorage.getItem(overrideKey);
+    const manualStartTime = manualStartTimes[overrideKey];
     const effectiveStartTime = manualStartTime || periodConfig?.startTime;
 
     if (effectiveStartTime) {
@@ -256,6 +274,23 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
             className="h-9 gap-2 text-[10px] font-black uppercase text-indigo-600 border-indigo-200 hover:bg-indigo-50 shadow-sm"
           >
             <FileDown className="w-3.5 h-3.5" /> Export
+          </Button>
+          <Button 
+            onClick={async () => {
+              try {
+                toast.info('Starting backup...');
+                const { backupToDrive } = await import('../lib/gdrive');
+                await backupToDrive();
+                toast.success('Backup complete!');
+              } catch (e: any) {
+                toast.error('Backup failed. Check settings.');
+              }
+            }} 
+            variant="default" 
+            size="sm" 
+            className="h-9 gap-2 text-[10px] font-black uppercase bg-indigo-600 hover:bg-indigo-700 shadow-sm"
+          >
+            <CloudUpload className="w-3.5 h-3.5" /> Backup
           </Button>
         </div>
       </div>

@@ -196,16 +196,29 @@ export default function App() {
              
              const db = await getDB();
              
-             await db.clear('students');
-             await db.clear('schedules');
-             await db.clear('scans');
-             await db.clear('behaviors');
+             if (data.students) {
+                await db.clear('students');
+                for (const item of data.students) await db.put('students', item);
+             }
              
-             if (data.students) for (const item of data.students) await db.put('students', item);
-             if (data.schedules) for (const item of data.schedules) await db.put('schedules', item);
-             if (data.scans) for (const item of data.scans) await db.put('scans', item);
-             if (data.behaviors) for (const item of data.behaviors) await db.put('behaviors', item);
-             if (data.settings) for (const item of data.settings) await db.put('settings', item);
+             if (data.schedules) {
+                await db.clear('schedules');
+                for (const item of data.schedules) await db.put('schedules', item);
+             }
+             
+             if (data.scans) {
+                await db.clear('scans');
+                for (const item of data.scans) await db.put('scans', item);
+             }
+             
+             if (data.behaviors) {
+                await db.clear('behaviors');
+                for (const item of data.behaviors) await db.put('behaviors', item);
+             }
+             
+             if (data.settings) {
+                for (const item of data.settings) await db.put('settings', item);
+             }
 
              toast.success('Data imported successfully! Reloading...');
              setTimeout(() => window.location.reload(), 1000);

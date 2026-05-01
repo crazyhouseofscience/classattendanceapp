@@ -118,6 +118,13 @@ export function getDB() {
 // Ensure default schedule exists
 export async function initDefaultData() {
   const db = await getDB();
+  
+  // Set default grace period
+  const gracePeriod = await db.get('settings', 'grace_period');
+  if (!gracePeriod) {
+    await db.put('settings', { key: 'grace_period', value: 5 });
+  }
+
   const defaultSchedule = await db.get('schedules', 'default');
   
   if (!defaultSchedule || defaultSchedule.periods[0].endTime === '08:40' || defaultSchedule.periods[0].endTime === '08:45') {
