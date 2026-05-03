@@ -334,9 +334,9 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
          </div>
       </div>
 
-      <div className="border rounded-xl bg-white overflow-hidden shadow-sm border-slate-200">
+      <div className="border rounded-xl bg-white overflow-x-auto shadow-sm border-slate-200 min-w-0">
         {activeTab === 'logs' && (
-            <Table>
+            <Table className="min-w-[600px]">
               <TableHeader className="bg-slate-50/50">
                 <TableRow className="hover:bg-transparent border-slate-200">
                   <TableHead onClick={() => setSortBy('time')} className="text-[10px] font-bold uppercase text-slate-500 h-10 cursor-pointer hover:text-indigo-600">Time</TableHead>
@@ -376,7 +376,7 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
         )}
 
         {activeTab === 'student-summary' && (
-            <Table>
+            <Table className="min-w-[600px]">
               <TableHeader className="bg-slate-50/50">
                 <TableRow className="hover:bg-transparent border-slate-200">
                   <TableHead onClick={() => setSortBy('id')} className="text-[10px] font-bold uppercase text-slate-500 h-10 cursor-pointer hover:text-indigo-600">ID</TableHead>

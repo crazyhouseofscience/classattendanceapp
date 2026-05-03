@@ -239,7 +239,7 @@ export default function App() {
   const enrollmentPeriodName = getEnrollmentPeriodName(activePeriodName);
 
   return (
-    <div className="min-h-screen bg-slate-50 font-sans text-slate-900 pb-2">
+    <div className="flex flex-col min-h-screen bg-slate-50 font-sans text-slate-900 pb-2">
       {/* Top Banner - Slim version */}
       <header className="bg-white border-b sticky top-0 z-20 shadow-sm">
         <div className="max-w-7xl mx-auto px-2 h-10 flex items-center justify-between">
@@ -320,7 +320,7 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-2 py-1">
+      <main className="max-w-7xl mx-auto px-2 py-1 w-full overflow-hidden min-w-0 flex-1">
         <Tabs defaultValue="scanner" className="space-y-1">
           <TabsList className="bg-slate-100 border p-0.5 h-7 w-fit">
             <TabsTrigger value="scanner" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Scanner</TabsTrigger>
@@ -331,19 +331,19 @@ export default function App() {
             <TabsTrigger value="schedules" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Schedules</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="scanner" className="pt-1">
+          <TabsContent value="scanner" className="pt-1 min-w-0">
             <ScannerTab activeScheduleId={activeScheduleId} activePeriodName={enrollmentPeriodName} activeSchedule={activeSchedule} />
           </TabsContent>
           
-          <TabsContent value="students" className="pt-1">
+          <TabsContent value="students" className="pt-1 min-w-0">
             <StudentsTab activePeriodName={enrollmentPeriodName} activeSchedule={activeSchedule} />
           </TabsContent>
 
-          <TabsContent value="roster" className="pt-1">
+          <TabsContent value="roster" className="pt-1 min-w-0">
             <RosterTab />
           </TabsContent>
 
-          <TabsContent value="reports" className="pt-1">
+          <TabsContent value="reports" className="pt-1 min-w-0">
             <ReportsTab 
                activePeriodName={enrollmentPeriodName} 
                activeScheduleId={activeScheduleId} 
@@ -351,11 +351,11 @@ export default function App() {
                />
           </TabsContent>
 
-          <TabsContent value="schedules" className="pt-1">
+          <TabsContent value="schedules" className="pt-1 min-w-0">
             <SchedulesTab />
           </TabsContent>
 
-          <TabsContent value="behavior" className="pt-1">
+          <TabsContent value="behavior" className="pt-1 min-w-0">
             <BehaviorTab activePeriodName={enrollmentPeriodName} activeScheduleId={activeScheduleId} />
           </TabsContent>
         </Tabs>

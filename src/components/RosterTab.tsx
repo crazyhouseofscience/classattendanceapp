@@ -220,8 +220,8 @@ export default function RosterTab() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-slate-50/50">
-      <div className="p-4 bg-white border-b flex flex-wrap items-center justify-between gap-4 shadow-sm">
+    <div className="flex flex-col h-full bg-slate-50/50 min-w-0 overflow-hidden">
+      <div className="p-4 bg-white border-b flex flex-wrap items-center justify-between gap-4 shadow-sm shrink-0">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-indigo-100 rounded-lg">
             <Users className="w-5 h-5 text-indigo-600" />
@@ -265,25 +265,26 @@ export default function RosterTab() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-auto p-4">
-        <div className="bg-white rounded-xl border shadow-sm overflow-hidden">
-          <Table>
+      <div className="flex-1 p-4 min-w-0 overflow-hidden">
+        <div className="bg-white rounded-xl border shadow-sm overflow-x-auto">
+          <Table className="min-w-[800px]">
             <TableHeader className="bg-slate-50">
               <TableRow>
                 <TableHead className="w-24 font-bold cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('id')}>ID / Barcode</TableHead>
-                <TableHead className="font-bold cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('lastName')}>Last Name</TableHead>
-                <TableHead className="font-bold cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('firstName')}>First Name</TableHead>
-                <TableHead className="font-bold cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('rank')}>Rank</TableHead>
-                <TableHead className="font-bold">Periods</TableHead>
-                <TableHead className="font-bold">Homeroom</TableHead>
-                <TableHead className="font-bold">Email</TableHead>
-                <TableHead className="font-bold w-20 text-right">Actions</TableHead>
+                <TableHead className="w-32 font-bold cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('lastName')}>Last Name</TableHead>
+                <TableHead className="w-32 font-bold cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('firstName')}>First Name</TableHead>
+                <TableHead className="w-20 font-bold cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('rank')}>Rank</TableHead>
+                <TableHead className="w-48 font-bold">Periods</TableHead>
+                <TableHead className="w-24 font-bold">Homeroom</TableHead>
+                <TableHead className="w-48 font-bold">Email</TableHead>
+                <TableHead className="w-20 font-bold text-right">Actions</TableHead>
+                <TableHead className="w-full"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="h-32 text-center text-slate-400">
+                  <TableCell colSpan={9} className="h-32 text-center text-slate-400">
                     No students in master roster. Import a CSV to get started.
                   </TableCell>
                 </TableRow>
@@ -291,10 +292,10 @@ export default function RosterTab() {
                 filtered.map(student => (
                   <TableRow key={student.id} className="hover:bg-slate-50/50">
                     <TableCell className="font-mono text-xs">{student.id}</TableCell>
-                    <TableCell className="font-medium">{student.lastName}</TableCell>
-                    <TableCell>{student.firstName}</TableCell>
+                    <TableCell className="font-medium whitespace-normal">{student.lastName}</TableCell>
+                    <TableCell className="whitespace-normal">{student.firstName}</TableCell>
                     <TableCell className="text-slate-500">{student.gradebookRank}</TableCell>
-                    <TableCell className="text-xs text-slate-500">{student.periods?.join(', ') || '-'}</TableCell>
+                    <TableCell className="text-xs text-slate-500 whitespace-normal max-w-[200px]">{student.periods?.join(', ') || '-'}</TableCell>
                     <TableCell className="text-slate-500">{student.homeroom}</TableCell>
                     <TableCell className="text-slate-500 text-xs">{student.email}</TableCell>
                     <TableCell className="text-right">
@@ -307,6 +308,7 @@ export default function RosterTab() {
                         </Button>
                       </div>
                     </TableCell>
+                    <TableCell></TableCell>
                   </TableRow>
                 ))
               )}

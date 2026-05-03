@@ -677,8 +677,8 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                 <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Attendance Roster</h3>
                 <span className="text-[9px] text-slate-400 font-bold">{students.length} Students</span>
              </div>
-             <div className="flex-1 overflow-y-auto overflow-x-hidden">
-               <Table>
+             <div className="flex-1 overflow-auto min-w-0">
+               <Table className="min-w-[600px]">
                  <TableHeader className="bg-slate-50/90 sticky top-0 z-20 backdrop-blur-sm shadow-sm">
                    <TableRow className="h-6 border-b-2 bg-slate-50">
                      <TableHead className="w-[180px] text-[10px] font-black uppercase py-0 px-2 h-6">Student Name</TableHead>

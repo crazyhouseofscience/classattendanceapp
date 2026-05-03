@@ -539,8 +539,8 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
         </div>
       </div>
 
-      <div className="border rounded-xl bg-white">
-        <Table>
+      <div className="border rounded-xl bg-white overflow-x-auto min-w-0">
+        <Table className="min-w-[800px]">
           <TableHeader className="bg-slate-50">
             <TableRow>
               <TableHead className="cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('id')}>ID/Barcode</TableHead>
