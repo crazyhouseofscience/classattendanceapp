@@ -60,8 +60,19 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
            const db = await getDB();
            const text = event.target?.result as string;
            const importedBehaviors = JSON.parse(text);
-           if (!Array.isArray(importedBehaviors)) {
-              toast.error('Invalid JSON format for behaviors.');
+           
+           let importArray: any[] = [];
+           if (Array.isArray(importedBehaviors)) {
+              importArray = importedBehaviors;
+           } else if (importedBehaviors && typeof importedBehaviors === 'object') {
+              if (Array.isArray(importedBehaviors.behaviors)) importArray = importedBehaviors.behaviors;
+              else if (Array.isArray(importedBehaviors.events)) importArray = importedBehaviors.events;
+              else if (Array.isArray(importedBehaviors.data)) importArray = importedBehaviors.data;
+              else importArray = Object.values(importedBehaviors).filter((v: any) => v && typeof v === 'object');
+           }
+
+           if (importArray.length === 0) {
+              toast.error('Could not find behavior data in JSON.');
               return;
            }
 
@@ -71,13 +82,55 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
            const existingBehaviors = await db.getAll('behaviors');
            const existingIds = new Set(existingBehaviors.map(b => b.id));
 
-           for (const b of importedBehaviors) {
-             if (!b.id || !b.studentId || !b.timestamp) continue;
-             if (existingIds.has(b.id)) {
+           for (const item of importArray) {
+             const studentId = item.studentId || item.student_id || item.barcode || item.student;
+             if (!studentId) continue;
+             
+             let timestamp = item.timestamp;
+             if (!timestamp) {
+                if (item.date && item.time) {
+                   timestamp = new Date(`${item.date} ${item.time}`).getTime();
+                } else if (item.created_at) {
+                   timestamp = new Date(item.created_at).getTime();
+                } else if (item.date) {
+                   timestamp = new Date(item.date).getTime();
+                } else {
+                   timestamp = Date.now();
+                }
+             }
+             if (isNaN(timestamp)) timestamp = Date.now();
+
+             const date = item.date || format(new Date(timestamp), 'yyyy-MM-dd');
+             const typeRaw = item.type || (item.points && item.points > 0 ? 'Positive' : item.points && item.points < 0 ? 'Negative' : 'Neutral');
+             const typeStr = typeof typeRaw === 'string' ? typeRaw : String(typeRaw);
+             let type: 'Positive' | 'Negative' | 'Neutral' = 'Neutral';
+             if (typeStr.toLowerCase() === 'positive') type = 'Positive';
+             if (typeStr.toLowerCase() === 'negative') type = 'Negative';
+
+             const category = item.category || item.behavior || item.name || 'Imported Behavior';
+             const points = item.points !== undefined ? Number(item.points) : (type === 'Positive' ? 1 : type === 'Negative' ? -1 : 0);
+             const notes = item.notes || item.comment || item.reason || item.description || undefined;
+             const periodName = item.periodName || item.period || undefined;
+             const id = String(item.id || `import_beh_${studentId}_${timestamp}_${Math.random().toString(36).substring(2,7)}`);
+
+             if (existingIds.has(id)) {
                skipped++;
                continue;
              }
-             await db.put('behaviors', b);
+
+             const mappedBehavior: BehaviorEvent = {
+                id,
+                studentId: String(studentId),
+                timestamp,
+                date,
+                type,
+                category,
+                points,
+                notes,
+                periodName
+             };
+
+             await db.put('behaviors', mappedBehavior);
              imported++;
            }
 
