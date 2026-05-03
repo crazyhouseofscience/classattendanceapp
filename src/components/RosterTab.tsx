@@ -6,6 +6,7 @@ import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
 import { Label } from './ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Search, Upload, Download, Trash2, RefreshCw, Users, Plus, Edit2, Check } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -13,6 +14,7 @@ export default function RosterTab() {
   const [masterRoster, setMasterRoster] = useState<Student[]>([]);
   const [knownPeriods, setKnownPeriods] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [periodFilter, setPeriodFilter] = useState('all');
   const [isImporting, setIsImporting] = useState(false);
   const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'rank' | 'id'>('lastName');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
@@ -270,9 +272,11 @@ export default function RosterTab() {
     }
   };
 
-  const filtered = masterRoster.filter(s => 
-    `${s.firstName} ${s.lastName} ${s.id} ${s.homeroom}`.toLowerCase().includes(searchTerm.toLowerCase())
-  ).sort((a, b) => {
+  const filtered = masterRoster.filter(s => {
+    const matchesSearch = `${s.firstName} ${s.lastName} ${s.id} ${s.homeroom}`.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesPeriod = periodFilter === 'all' || (s.periods && s.periods.includes(periodFilter));
+    return matchesSearch && matchesPeriod;
+  }).sort((a, b) => {
     let result = 0;
     if (sortBy === 'firstName') {
       result = (a.firstName || '').localeCompare(b.firstName || '');
@@ -318,6 +322,18 @@ export default function RosterTab() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          
+          <Select value={periodFilter} onValueChange={setPeriodFilter}>
+            <SelectTrigger className="w-48 h-9 text-sm bg-white">
+              <SelectValue placeholder="All Periods" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Periods</SelectItem>
+              {knownPeriods.map(p => (
+                <SelectItem key={p} value={p}>{p}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           
           <Button variant="default" size="sm" onClick={handleOpenAddModal} className="gap-2 bg-indigo-600 hover:bg-indigo-700">
             <Plus className="w-4 h-4" /> Add Student
