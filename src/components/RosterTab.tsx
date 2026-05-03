@@ -135,6 +135,49 @@ export default function RosterTab() {
     reader.readAsText(file);
   };
 
+  const handleAutoAssignLabs = async () => {
+    if (!window.confirm('This will automatically assign lab periods based on current class periods (e.g. Period 2 -> Period 1/2 Lab). Proceed?')) return;
+    
+    try {
+      const db = await getDB();
+      const students = await db.getAll('students');
+      let updatedCount = 0;
+      
+      // Look up exact lab names from knownPeriods if possible
+      const lab12 = knownPeriods.find(p => p.includes('1/2 Lab')) || 'Period 1/2 Lab (CP Chem)';
+      const lab4p3 = knownPeriods.find(p => p.includes('4 Lab (P3')) || 'Period 4 Lab (P3 students)';
+      const lab4p5 = knownPeriods.find(p => p.includes('4 Lab (P5')) || 'Period 4 Lab (P5 students)';
+      const lab67 = knownPeriods.find(p => p.includes('6/7 Lab')) || 'Period 6/7 Lab (CP Chem)';
+  
+      for (const s of students) {
+        if (!s.periods) continue;
+        let pSet = new Set(s.periods);
+        const originalSize = pSet.size;
+        
+        const hasP2 = s.periods.some(p => p.includes('Period 2'));
+        const hasP3 = s.periods.some(p => p.includes('Period 3'));
+        const hasP5 = s.periods.some(p => p.includes('Period 5'));
+        const hasP7 = s.periods.some(p => p.includes('Period 7'));
+        
+        if (hasP2) pSet.add(lab12);
+        if (hasP3) pSet.add(lab4p3);
+        if (hasP5) pSet.add(lab4p5);
+        if (hasP7) pSet.add(lab67);
+        
+        if (pSet.size > originalSize) {
+          await db.put('students', { ...s, periods: Array.from(pSet) });
+          updatedCount++;
+        }
+      }
+      
+      toast.success(`Assigned labs to ${updatedCount} students.`);
+      loadRoster();
+      triggerAutoBackup();
+    } catch (err) {
+      toast.error('Failed to auto-assign labs.');
+    }
+  };
+
   const handleExportCSV = () => {
     if (masterRoster.length === 0) return;
     const headers = "Barcode,FirstName,LastName,Rank,Homeroom,Email";
@@ -288,6 +331,9 @@ export default function RosterTab() {
           />
           <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} disabled={isImporting} className="gap-2">
             <Upload className="w-4 h-4" /> Import CSV
+          </Button>
+          <Button variant="outline" size="sm" onClick={handleAutoAssignLabs} className="gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50">
+            <RefreshCw className="w-4 h-4" /> Auto-Assign Labs
           </Button>
           <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-2">
             <Download className="w-4 h-4" /> Export CSV
