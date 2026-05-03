@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getDB, ScanEvent, Student, Schedule, BehaviorEvent } from '../lib/db';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { format } from 'date-fns';
 import { Input } from './ui/input';
 import { Button } from './ui/button';
-import { FileDown, CloudUpload } from 'lucide-react';
+import { FileDown, CloudUpload, Upload } from 'lucide-react';
 import { toast } from 'sonner';
+import Papa from 'papaparse';
 
 interface ReportsTabProps {
   activePeriodName: string | null;
@@ -25,6 +26,7 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
   const [sortBy, setSortBy] = useState<'time' | 'firstName' | 'lastName' | 'rank' | 'pos' | 'neg' | 'abs' | 'late' | 'status'>('lastName');
   const [gracePeriod, setGracePeriod] = useState(5);
   const [manualStartTimes, setManualStartTimes] = useState<Record<string, string>>({});
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     loadData();
@@ -46,6 +48,111 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
     });
     setManualStartTimes(overrides);
   }
+
+  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      complete: async (results) => {
+        try {
+          const db = await getDB();
+          let imported = 0;
+          let skipped = 0;
+
+          const isLogExport = results.meta.fields?.includes('Timestamp') && results.meta.fields?.includes('Barcode/ID');
+          
+          if (isLogExport) {
+            for (const row of results.data as any[]) {
+                const dateStr = row['Date'];
+                const timeStr = row['Timestamp']; // "5:30:15 PM"
+                const studentId = row['Barcode/ID'];
+                const period = row['Period'];
+                const statusStr = row['Status'];
+                const passStr = row['Pass'];
+                const reasonStr = row['Reason/Notes'];
+
+                if (!dateStr || !timeStr || !studentId) continue;
+
+                const fullDateTimeStr = `${dateStr} ${timeStr}`;
+                const timestampDate = new Date(fullDateTimeStr);
+                let timestamp = timestampDate.getTime();
+                if (isNaN(timestamp)) continue;
+
+                const manualStatusMappings: Record<string, string> = {
+                   'PRESENT': 'Present',
+                   'LATE': 'Late',
+                   'ABSENT': 'Absent'
+                };
+                
+                const movementTypes: string[] = ['Attendance', 'Bathroom', 'Nurse', 'Office', 'Guidance', 'Returned'];
+                let effectiveType = 'Attendance';
+                let manualStatusVal: any = undefined;
+                let scanStatus = 'success';
+
+                if (statusStr) {
+                   const upStat = statusStr.toUpperCase();
+                   if (upStat === 'NOT FOUND') {
+                       scanStatus = 'unknown_barcode';
+                   } else if (upStat === 'NOT IN ROSTER') {
+                       scanStatus = 'not_in_period';
+                   } else if (manualStatusMappings[upStat]) {
+                       manualStatusVal = manualStatusMappings[upStat];
+                   } else {
+                       const foundMovement = movementTypes.find(m => m.toUpperCase() === upStat);
+                       if (foundMovement) {
+                           effectiveType = foundMovement;
+                       }
+                   }
+                }
+
+                const existingScans = await db.transaction('scans').store.index('by-date').getAll(dateStr);
+                const isDuplicate = existingScans.some(s => s.studentId === studentId && s.timestamp === timestamp);
+                
+                if (isDuplicate) {
+                    skipped++;
+                    continue;
+                }
+
+                const newScan: ScanEvent = {
+                    id: `import_${studentId}_${timestamp}_${Math.random().toString(36).substring(2,7)}`,
+                    studentId,
+                    timestamp,
+                    date: dateStr,
+                    periodName: period || 'Imported',
+                    scheduleId: 'default',
+                    status: scanStatus as any,
+                    movementType: effectiveType as any,
+                    manualStatus: manualStatusVal,
+                    notes: reasonStr || undefined,
+                    isExcused: passStr === 'Pass',
+                    hasNoPass: passStr === 'No Pass'
+                };
+
+                await db.put('scans', newScan);
+                imported++;
+            }
+          }
+          
+          if (imported > 0) {
+             toast.success(`Imported ${imported} log entries (skipped ${skipped} duplicates)`);
+             loadData();
+          } else if (skipped > 0) {
+             toast.info(`No entries imported. Skipped ${skipped} duplicates.`);
+          } else {
+             toast.error('Could not find compatible data to import.');
+          }
+        } catch (e) {
+          console.error(e);
+          toast.error('Failed to import records');
+        } finally {
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+      }
+    });
+  };
 
   async function loadData() {
     const db = await getDB();
@@ -308,6 +415,23 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
                   </>
               )}
           </div>
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            className="hidden" 
+            accept=".csv" 
+            onChange={handleImportCSV}
+          />
+          {activeTab === 'logs' && (
+              <Button 
+                onClick={() => fileInputRef.current?.click()} 
+                variant="outline" 
+                size="sm" 
+                className="h-9 gap-2 text-[10px] font-black uppercase text-indigo-600 border-indigo-200 hover:bg-indigo-50 shadow-sm"
+              >
+                <Upload className="w-3.5 h-3.5" /> Import CSV
+              </Button>
+          )}
           <Button 
             onClick={exportToCSV} 
             variant="outline" 
