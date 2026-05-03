@@ -380,9 +380,9 @@ export default function RosterTab() {
               />
             </div>
             {knownPeriods.length > 0 && (
-              <div className="grid grid-cols-4 items-start gap-4">
-                <Label className="text-right mt-2">Class Periods</Label>
-                <div className="col-span-3 grid grid-cols-2 gap-2 mt-1">
+              <div className="space-y-3 mt-2 border-t pt-4">
+                <Label>Class Periods</Label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-1 max-h-64 overflow-y-auto pr-1">
                   {knownPeriods.map(p => {
                     const isEnrolled = formData.periods.includes(p);
                     return (
@@ -394,13 +394,13 @@ export default function RosterTab() {
                               periods: isEnrolled ? prev.periods.filter(x => x !== p) : [...prev.periods, p]
                            }))
                         }}
-                        className={`border rounded-lg p-2 text-sm cursor-pointer flex items-center gap-2 transition-colors
+                        className={`border rounded-lg p-2 text-sm cursor-pointer flex items-start gap-2 transition-colors
                           ${isEnrolled ? 'bg-indigo-50 border-indigo-200 text-indigo-700' : 'bg-slate-50 text-slate-600 hover:bg-slate-100'}`}
                       >
-                        <div className={`w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 ${isEnrolled ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300'}`}>
+                        <div className={`mt-0.5 w-4 h-4 rounded-sm border flex items-center justify-center shrink-0 ${isEnrolled ? 'bg-indigo-600 border-indigo-600' : 'border-slate-300'}`}>
                           {isEnrolled && <Check className="w-3 h-3 text-white" />}
                         </div>
-                        <span className="truncate">{p}</span>
+                        <span className="leading-tight">{p}</span>
                       </div>
                     );
                   })}
