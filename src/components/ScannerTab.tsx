@@ -26,6 +26,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const [scans, setScans] = useState<(ScanEvent & { studentInfo?: Student })[]>([]);
   const [gracePeriod, setGracePeriodState] = useState(5);
   const [scanReason, setScanReason] = useState<string | null>(null);
+  const [viewDate, setViewDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
 
   const [editingScanId, setEditingScanId] = useState<string | null>(null);
   const [editingTimeStr, setEditingTimeStr] = useState<string>('');
@@ -116,8 +117,8 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const [manualStartTimeInternal, setManualStartTimeInternal] = useState<string | null>(null);
   const [manualEndTimeInternal, setManualEndTimeInternal] = useState<string | null>(null);
 
-  const getOverrideKey = () => `override_${format(new Date(), 'yyyy-MM-dd')}_${activeScheduleId}_${activePeriodName}`;
-  const getOverrideEndKey = () => `override_end_${format(new Date(), 'yyyy-MM-dd')}_${activeScheduleId}_${activePeriodName}`;
+  const getOverrideKey = () => `override_${viewDate}_${activeScheduleId}_${activePeriodName}`;
+  const getOverrideEndKey = () => `override_end_${viewDate}_${activeScheduleId}_${activePeriodName}`;
 
   const setManualStartTime = async (time: string | null) => {
     const key = getOverrideKey();
@@ -140,7 +141,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
   useEffect(() => {
     loadSettings();
-  }, [activePeriodName, activeScheduleId]);
+  }, [activePeriodName, activeScheduleId, viewDate]);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -234,7 +235,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
   const loadData = async () => {
     const db = await getDB();
-    const today = format(new Date(), 'yyyy-MM-dd');
+    const today = viewDate;
     
     const allStudents = await db.getAll('students');
     const periodRoster = (activePeriodName && activePeriodName !== 'all')
@@ -276,7 +277,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
   useEffect(() => {
     loadData();
-  }, [activePeriodName, activeScheduleId]);
+  }, [activePeriodName, activeScheduleId, viewDate]);
 
   // Keep focus on input for hand scanner, but only if no other input is active
   useEffect(() => {
@@ -304,7 +305,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     const student = await db.get('students', code);
     
     const now = Date.now();
-    const todayStr = format(now, 'yyyy-MM-dd');
+    const todayStr = viewDate;
     const todayScans = await db.transaction('scans').store.index('by-date').getAll(todayStr);
     const studentScans = todayScans.filter(s => s.studentId === code && s.periodName === effectivePeriodName);
     
@@ -392,7 +393,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
          id: `manual_${student.id}_${now}`,
          studentId: student.id,
          timestamp: now,
-         date: format(new Date(now), 'yyyy-MM-dd'),
+         date: viewDate,
          periodName: activePeriodName,
          scheduleId: activeScheduleId,
          status: 'success',
@@ -441,7 +442,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
       id: `${student.id}_log_${now}`,
       studentId: student.id,
       timestamp: now,
-      date: format(new Date(now), 'yyyy-MM-dd'),
+      date: viewDate,
       periodName: activePeriodName,
       scheduleId: activeScheduleId,
       status: 'success',
@@ -493,9 +494,17 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
       {/* Fixed Sticky Header */}
       <div className="sticky top-0 z-10 bg-slate-50 border-b pb-1 mb-1">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-2">
-          <h2 className="text-xl font-black tracking-tight text-slate-800 leading-none">
-             {isReady ? activePeriodName : 'Scanner Mode'}
-          </h2>
+          <div className="flex items-center gap-3">
+             <h2 className="text-xl font-black tracking-tight text-slate-800 leading-none">
+                {isReady ? activePeriodName : 'Scanner Mode'}
+             </h2>
+             <Input 
+                type="date"
+                value={viewDate}
+                onChange={e => setViewDate(e.target.value)}
+                className="w-36 h-8 text-xs font-bold"
+             />
+          </div>
           
           <div className="flex-1 flex justify-center items-center gap-6">
              {isReady && currentPeriodConfig ? (
