@@ -49,9 +49,56 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
     setManualStartTimes(overrides);
   }
 
-  const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    if (file.name.endsWith('.json')) {
+       const reader = new FileReader();
+       reader.onload = async (event) => {
+         try {
+           const db = await getDB();
+           const text = event.target?.result as string;
+           const importedBehaviors = JSON.parse(text);
+           if (!Array.isArray(importedBehaviors)) {
+              toast.error('Invalid JSON format for behaviors.');
+              return;
+           }
+
+           let imported = 0;
+           let skipped = 0;
+
+           const existingBehaviors = await db.getAll('behaviors');
+           const existingIds = new Set(existingBehaviors.map(b => b.id));
+
+           for (const b of importedBehaviors) {
+             if (!b.id || !b.studentId || !b.timestamp) continue;
+             if (existingIds.has(b.id)) {
+               skipped++;
+               continue;
+             }
+             await db.put('behaviors', b);
+             imported++;
+           }
+
+           if (imported > 0) {
+             toast.success(`Imported ${imported} behavior events (skipped ${skipped} duplicates)`);
+             loadData();
+           } else if (skipped > 0) {
+             toast.info(`No entries imported. Skipped ${skipped} duplicates.`);
+           } else {
+             toast.error('No compatible behavior data found.');
+           }
+         } catch (e) {
+            console.error(e);
+            toast.error('Failed to parse or import JSON file.');
+         } finally {
+            if (fileInputRef.current) fileInputRef.current.value = '';
+         }
+       };
+       reader.readAsText(file);
+       return;
+    }
 
     Papa.parse(file, {
       header: true,
@@ -419,17 +466,17 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
             type="file" 
             ref={fileInputRef} 
             className="hidden" 
-            accept=".csv" 
-            onChange={handleImportCSV}
+            accept=".csv,.json" 
+            onChange={handleImportFile}
           />
-          {activeTab === 'logs' && (
+          {(activeTab === 'logs' || activeTab === 'student-summary') && (
               <Button 
                 onClick={() => fileInputRef.current?.click()} 
                 variant="outline" 
                 size="sm" 
                 className="h-9 gap-2 text-[10px] font-black uppercase text-indigo-600 border-indigo-200 hover:bg-indigo-50 shadow-sm"
               >
-                <Upload className="w-3.5 h-3.5" /> Import CSV
+                <Upload className="w-3.5 h-3.5" /> Import Data
               </Button>
           )}
           <Button 
