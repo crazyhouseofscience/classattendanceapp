@@ -150,7 +150,8 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
         type: b.type as any,
         category: b.name,
         points: b.points,
-        notes: comment
+        notes: comment,
+        periodName: activePeriodName
     };
     await db.put('behaviors', newBehavior);
     

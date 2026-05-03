@@ -42,12 +42,45 @@ export default function RosterTab() {
     // Also fetch all available periods for the periods multiselect/checks
     const allSchedules = await db.getAll('schedules');
     const periodsSet = new Set<string>();
+    
+    // 1. Gather all unique period names, trimming spaces
     for (const sch of allSchedules) {
        for (const p of sch.periods) {
-          periodsSet.add(p.name);
+          if (p.name.trim()) periodsSet.add(p.name.trim());
        }
     }
-    setKnownPeriods(Array.from(periodsSet).sort());
+    
+    // 2. Add periods that students are actually enrolled in, just in case
+    for (const s of students) {
+        if (s.periods) {
+            for (const p of s.periods) {
+                if (p.trim()) periodsSet.add(p.trim());
+            }
+        }
+    }
+
+    let rawPeriods = Array.from(periodsSet).sort();
+    
+    // 3. Filter out generic periods if a specific one exists (e.g. "Period 3" vs "Period 3 (Honors Chem)")
+    // A generic period is something matching exactly "Period N" or "Pd N"
+    const genericRegex = /^(?:period|pd)\s*(\d+)$/i;
+    
+    const finalPeriods = rawPeriods.filter(p => {
+        const match = p.match(genericRegex);
+        if (match) {
+            const num = match[1];
+            // Check if there's another period that starts with "Period N " or "Period N(" or similar
+            const hasSpecific = rawPeriods.some(other => 
+                other !== p && 
+                other.toLowerCase().startsWith(p.toLowerCase()) && 
+                (other[p.length] === ' ' || other[p.length] === '(' || other[p.length] === '/')
+            );
+            return !hasSpecific;
+        }
+        return true;
+    });
+
+    setKnownPeriods(finalPeriods);
   }
 
   const handleImportCSV = (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -51,6 +51,7 @@ export interface BehaviorEvent {
   category: string;
   points: number;
   notes?: string;
+  periodName?: string | null;
 }
 
 export interface Settings {

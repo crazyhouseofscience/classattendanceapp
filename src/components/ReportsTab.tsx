@@ -91,8 +91,16 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
       const rawScans = await scanStore.getAll();
       const rawBehaviors = await behaviorStore.getAll();
       
-      const filteredScans = rawScans.filter(s => s.date >= startDate && s.date <= endDate);
-      const filteredBehaviors = rawBehaviors.filter(b => b.date >= startDate && b.date <= endDate);
+      const filteredScans = rawScans.filter(s => {
+        if (s.date < startDate || s.date > endDate) return false;
+        if (activePeriodName && activePeriodName !== 'all' && s.periodName !== activePeriodName) return false;
+        return true;
+      });
+      const filteredBehaviors = rawBehaviors.filter((b: any) => {
+        if (b.date < startDate || b.date > endDate) return false;
+        if (activePeriodName && activePeriodName !== 'all' && b.periodName && b.periodName !== activePeriodName) return false;
+        return true;
+      });
       
       setScans(filteredScans as any);
       setAllBehaviors(filteredBehaviors);
@@ -154,8 +162,26 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
     return { pos, neg, neu, abs, lates, total: pos - neg };
   };
 
+  const isStudentInPeriod = (student: Student, periodName: string) => {
+    if (!student.periods || student.periods.length === 0) return false;
+    const matchPeriodId = periodName.match(/\b(\d+[A-Z]?)\b/i);
+    const periodId = matchPeriodId ? matchPeriodId[1].toLowerCase() : periodName.toLowerCase();
+    
+    return student.periods.some(p => {
+       if (p === periodName) return true;
+       const pLower = p.toLowerCase();
+       const regex = new RegExp(`^${periodName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+       if (regex.test(p)) return true;
+       if (matchPeriodId) {
+          const pMatch = pLower.match(/\b(?:p|pd|period|sec|section)?\s*(\d+[a-z]?)\b/i);
+          if (pMatch && pMatch[1].toLowerCase() === periodId) return true;
+       }
+       return false;
+    });
+  };
+
   const studentsToDisplay = (activePeriodName && activePeriodName !== 'all')
-    ? allStudents.filter(s => s.periods?.includes(activePeriodName))
+    ? allStudents.filter(s => isStudentInPeriod(s, activePeriodName))
     : allStudents;
 
   if (activeTab === 'student-summary') {
