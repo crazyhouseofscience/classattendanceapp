@@ -2,7 +2,7 @@
 import { getDB } from './db';
 
 // Use GIS for Google Drive API
-const CLIENT_ID = (import.meta as any).env.VITE_CLIENT_ID || '';
+const CLIENT_ID = (import.meta as any).env.VITE_CLIENT_ID || '293411564104-sbjgq7el71u13vhpj38irfqle0gbn86v.apps.googleusercontent.com';
 const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
 declare global {
