@@ -81,10 +81,12 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
   const getStudentStatus = (student: Student) => {
      // Attendance status is based on the EARLIEST Attendance scan
-     const scan = scans.find(s => 
+     const studentScans = scans.filter(s => 
        s.studentId === student.id && 
        (s.movementType === 'Attendance' || (!s.movementType && !['Bathroom', 'Nurse', 'Office', 'Guidance', 'Returned'].includes(s.notes || '')))
      );
+     // scans is sorted descending, so the earliest is the last element
+     const scan = studentScans[studentScans.length - 1];
 
      if (!scan) return { status: 'Absent', text: 'Absent', time: null, scanId: null };
      
@@ -308,10 +310,21 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     const todayStr = viewDate;
     const todayScans = await db.transaction('scans').store.index('by-date').getAll(todayStr);
     const studentScans = todayScans.filter(s => s.studentId === code && s.periodName === effectivePeriodName);
+    studentScans.sort((a, b) => a.timestamp - b.timestamp);
     
     // Movement type determination
-    // If a purpose is explicitly set, use it. Otherwise, if it's the first scan, it's Attendance.
-    const movementType = purpose || (studentScans.length === 0 ? 'Attendance' : 'Returned');
+    let movementType = 'Attendance';
+    if (purpose) {
+        movementType = purpose;
+    } else if (studentScans.length > 0) {
+        const lastScanType = studentScans[studentScans.length - 1].movementType;
+        if (['Bathroom', 'Nurse', 'Office', 'Guidance'].includes(lastScanType)) {
+            movementType = 'Returned';
+        } else {
+            movementType = 'Attendance'; // duplicate attendance scan
+        }
+    }
+
     const isAttendanceScan = movementType === 'Attendance';
     
     let manualStatus: 'Late' | undefined = undefined;
@@ -675,6 +688,30 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                     className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'status' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
                  >
                     Status
+                 </Button>
+                 <Button 
+                    variant={sortBy === 'firstName' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setSortBy('firstName')}
+                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'firstName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                 >
+                    First
+                 </Button>
+                 <Button 
+                    variant={sortBy === 'lastName' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setSortBy('lastName')}
+                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'lastName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                 >
+                    Last
+                 </Button>
+                 <Button 
+                    variant={sortBy === 'rank' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setSortBy('rank')}
+                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'rank' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                 >
+                    Rank
                  </Button>
               </div>
            )}
