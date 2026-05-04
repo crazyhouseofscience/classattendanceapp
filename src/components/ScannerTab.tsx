@@ -767,7 +767,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                   <div className="flex items-center gap-2 overflow-hidden">
                                      <span className={`text-xs font-bold leading-none truncate ${nameColor}`}>{student.firstName} {student.lastName}</span>
                                      {student.gradebookRank && <span className="text-[9px] bg-indigo-50 text-indigo-500 font-black px-1 rounded-sm shadow-sm ring-1 ring-indigo-200">#{student.gradebookRank}</span>}
-                                     <span className="text-[10px] text-slate-300 font-mono tracking-tighter opacity-0 group-hover:opacity-100 transition-opacity leading-none uppercase shrink-0">{student.id}</span>
+                                     <span className="text-[10px] text-slate-500 font-mono tracking-tighter leading-none uppercase shrink-0">{student.id}</span>
                                      {moveStatus?.out && (
                                         <span className="inline-flex items-center gap-1 font-black text-[10px] text-amber-600 uppercase bg-amber-50 px-2 rounded ring-1 ring-amber-100 leading-none py-1.5">
                                            {moveStatus.reason}
