@@ -910,7 +910,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
               </div>
 
               {/* Middle Column: ACTIVE MOVEMENT */}
-              <div className="w-[30%] flex flex-col border rounded-xl bg-white shadow-sm overflow-hidden min-h-0">
+              <div className="w-[20%] flex flex-col border rounded-xl bg-white shadow-sm overflow-hidden min-h-0">
                  <div className="bg-amber-100/50 px-4 py-2 border-b flex justify-between items-center">
                     <h3 className="text-xs font-bold text-amber-700 uppercase tracking-widest">Out of Class</h3>
                     <span className="text-[10px] text-amber-600 font-bold bg-white px-2 py-0.5 rounded-full border border-amber-200">
