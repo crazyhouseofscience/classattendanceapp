@@ -851,6 +851,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                              NO PASS
                                           </Button>
                                           <Button variant="ghost" size="sm" onClick={() => manualMark(student, 'Absent')} className="h-6 w-6 p-0 text-sm text-red-200 hover:text-red-500 hover:bg-red-50 transition-colors uppercase font-black ml-1">X</Button>
+<Button variant="ghost" size="sm" onClick={() => { trackBehavior(student.id, { name: 'Cut Class', points: -2, type: 'Negative' }, 'Student cut class'); manualMark(student, 'Absent'); }} className="h-6 px-2 text-[10px] tracking-tight font-black uppercase text-slate-400 hover:bg-slate-100 transition-colors ml-1">CUT</Button>
                                        </div>
                                     )}
                                   </div>
