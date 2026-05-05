@@ -474,6 +474,27 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     triggerAutoBackup();
   };
 
+  const markAllArrived = async () => {
+    if (!activePeriodName || activePeriodName === 'all' || !activeScheduleId) return;
+    const db = await getDB();
+    const now = Date.now();
+    
+    // Iterate students who are present (not absent)
+    const presentStudents = students.filter(s => getStudentStatus(s).status !== 'Absent');
+    
+    for (const student of presentStudents) {
+       const { scanId } = getStudentStatus(student);
+       if (scanId) {
+           const scan = await db.get('scans', scanId);
+           if (scan) {
+               await db.put('scans', { ...scan, timestamp: now });
+           }
+       }
+    }
+    await loadData();
+    toast.success('Attendance times updated to now.');
+ };
+
   const toggleExcused = async (studentToToggle: Student) => {
     const studentScans = scans.filter(s => s.studentId === studentToToggle.id).sort((a,b) => a.timestamp - b.timestamp);
     const scan = studentScans[0];
@@ -784,7 +805,10 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                 <span className="text-[9px] text-slate-400 font-bold">{students.length} Students</span>
              </div>
              <div className="flex-1 overflow-auto min-w-0">
-               <Table className="min-w-[600px]">
+               <div className="flex justify-end p-2">
+                <Button variant="outline" size="sm" onClick={markAllArrived} className="h-5 text-[9px] font-black uppercase px-2 py-0 border-indigo-200 text-indigo-700 hover:bg-indigo-50">Mark Arrival Now</Button>
+             </div>
+             <Table className="min-w-[600px]">
                  <TableHeader className="bg-slate-50/90 sticky top-0 z-20 backdrop-blur-sm shadow-sm">
                    <TableRow className="h-6 border-b-2 bg-slate-50">
                      <TableHead className="w-[180px] text-[10px] font-black uppercase py-0 px-2 h-6">Student Name</TableHead>
