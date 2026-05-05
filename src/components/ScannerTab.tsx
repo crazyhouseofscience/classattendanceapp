@@ -2,10 +2,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Label } from './ui/label';
 import { Button } from './ui/button';
-import { getDB, Student, ScanEvent, Schedule } from '../lib/db';
+import { getDB, Student, ScanEvent, Schedule, BehaviorEvent } from '../lib/db';
 import { triggerAutoBackup } from '../lib/gdrive';
 import { format } from 'date-fns';
-import { CheckCircle, XCircle, AlertTriangle, Clock, Edit2 } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, Clock, Edit2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
@@ -30,6 +30,29 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
   const [editingScanId, setEditingScanId] = useState<string | null>(null);
   const [editingTimeStr, setEditingTimeStr] = useState<string>('');
+  
+  const [noteStudent, setNoteStudent] = useState<Student | null>(null);
+  const [noteText, setNoteText] = useState('');
+
+  const addNote = async () => {
+    if (!noteStudent || !noteText.trim()) return;
+    const db = await getDB();
+    const newBehavior: BehaviorEvent = {
+        id: `note_${noteStudent.id}_${Date.now()}`,
+        studentId: noteStudent.id,
+        timestamp: Date.now(),
+        date: format(new Date(), 'yyyy-MM-dd'),
+        type: 'Neutral',
+        category: 'Note',
+        points: 0,
+        notes: noteText,
+        periodName: activePeriodName
+    };
+    await db.put('behaviors', newBehavior);
+    setNoteStudent(null);
+    setNoteText('');
+    toast.success('Note added.');
+  };
 
   const openEditTime = (scanId: string, currentTimeMs: number) => {
      setEditingScanId(scanId);
