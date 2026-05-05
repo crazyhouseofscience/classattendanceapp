@@ -236,11 +236,15 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   };
 
   const loadData = async () => {
+    if (!activePeriodName) {
+      setStudents([]);
+      return;
+    }
     const db = await getDB();
     const today = viewDate;
     
     const allStudents = await db.getAll('students');
-    const periodRoster = (activePeriodName && activePeriodName !== 'all')
+    const periodRoster = (activePeriodName !== 'all')
       ? allStudents.filter(s => isStudentInPeriod(s, activePeriodName))
       : allStudents;
       
@@ -444,6 +448,14 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     await db.put('scans', updated);
     await loadData();
     triggerAutoBackup();
+  };
+
+  const deleteMovement = async (logId: string) => {
+    const db = await getDB();
+    await db.delete('scans', logId);
+    await loadData();
+    triggerAutoBackup();
+    toast.success('Movement log deleted');
   };
 
   const logMovement = async (student: Student, reason: string | null) => {
@@ -981,7 +993,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                          const db = await getDB();
                                          await db.delete('scans', log.id);
                                          loadData();
-                                      }} className="h-4 px-1 text-[8px] text-red-300 hover:text-red-500 font-bold uppercase opacity-20 hover:opacity-100 transition-opacity">Delete</Button>
+                                      }} className="h-4 px-1 text-[8px] text-red-300 hover:text-red-500 font-bold uppercase opacity-50 hover:opacity-100 transition-opacity">Delete</Button>
                                    </div>
                                 </TableCell>
                              </TableRow>
