@@ -341,8 +341,17 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
               let hours = parseInt(h, 10);
               let minutes = parseInt(m, 10);
               const upper = timeStr.toUpperCase();
+              
               if (upper.includes('PM') && hours < 12) hours += 12;
               if (upper.includes('AM') && hours === 12) hours = 0;
+              
+              // Heuristic: If no AM/PM and it's an afternoon period (e.g. 6-9), assume PM
+              if (!upper.includes('AM') && !upper.includes('PM') && hours < 12 && hours > 0) {
+                 const periodName = currentPeriodConfig?.name || '';
+                 if (periodName.match(/Period\s*[6-9]/i)) {
+                     hours += 12;
+                 }
+              }
               return hours * 60 + minutes;
          };
          const baseMinutes = parseTime(effectiveStartTime);
@@ -953,13 +962,13 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                     <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Movement Log</h3>
                     <span className="text-[10px] text-slate-400 font-medium">Full History</span>
                  </div>
-                 <div className="flex-1 overflow-y-auto">
-                    <Table>
+                 <div className="flex-1 overflow-y-auto overflow-x-hidden">
+                    <Table className="w-full table-fixed">
                        <TableHeader className="bg-slate-50 sticky top-0 z-20">
                           <TableRow>
-                             <TableHead className="w-1/4">Student</TableHead>
-                             <TableHead>Activity</TableHead>
-                             <TableHead className="text-right">Time</TableHead>
+                             <TableHead className="w-2/5">Student</TableHead>
+                             <TableHead className="w-2/5">Activity</TableHead>
+                             <TableHead className="w-1/5 text-right">Time</TableHead>
                           </TableRow>
                        </TableHeader>
                        <TableBody>
