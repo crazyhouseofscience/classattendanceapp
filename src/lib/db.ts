@@ -191,7 +191,8 @@ export async function initDefaultData() {
                homeroom: master.homeroom,
                gradebookRank: master.gradebookRank,
                email: master.email,
-               periods: master.periods || []
+               periods: master.periods || [],
+               notes: ''
             });
          }
       }

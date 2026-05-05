@@ -255,8 +255,16 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     const todayScans = await index.getAll(today);
     
     const populated = await Promise.all(todayScans.map(async (scan) => {
-      const student = await db.get('students', scan.studentId);
-      return { ...scan, studentInfo: student };
+      let student = await db.get('students', scan.studentId);
+      
+      // If scan was unknown but we now have the student, update it
+      let updatedScan = scan;
+      if (scan.status === 'unknown_barcode' && student) {
+        updatedScan = { ...scan, status: 'success' };
+        await db.put('scans', updatedScan);
+      }
+      
+      return { ...updatedScan, studentInfo: student };
     }));
 
     const filteredScans = (activePeriodName && activePeriodName !== 'all')
