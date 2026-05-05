@@ -336,8 +336,16 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     // Attendance calculation logic - only for Attendance scans
     const effectiveStartTime = manualStartTime || currentPeriodConfig?.startTime;
     if (isAttendanceScan && effectiveStartTime) {
-         const [baseH, baseM] = effectiveStartTime.split(':').map(Number);
-         const baseMinutes = baseH * 60 + baseM;
+         const parseTime = (timeStr: string) => {
+              let [h, m] = timeStr.split(':');
+              let hours = parseInt(h, 10);
+              let minutes = parseInt(m, 10);
+              const upper = timeStr.toUpperCase();
+              if (upper.includes('PM') && hours < 12) hours += 12;
+              if (upper.includes('AM') && hours === 12) hours = 0;
+              return hours * 60 + minutes;
+         };
+         const baseMinutes = parseTime(effectiveStartTime);
          const cutoffMinutes = baseMinutes + gracePeriod;
          const scanDate = new Date(now);
          const scanMinutes = scanDate.getHours() * 60 + scanDate.getMinutes();
