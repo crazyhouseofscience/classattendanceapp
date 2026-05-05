@@ -38,6 +38,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
   const [compactMode, setCompactMode] = useState(false);
   const [showBehaviorManager, setShowBehaviorManager] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
 
   // ...
 
@@ -55,7 +56,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
     loadData();
     const interval = setInterval(loadData, 5000);
     return () => clearInterval(interval);
-  }, [activePeriodName, showOnlyActive, sortBy, sortOrder]);
+  }, [activePeriodName, showOnlyActive, sortBy, sortOrder, selectedDate]);
 
   const loadData = async () => {
     const db = await getDB();
@@ -66,7 +67,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
        filteredStudents = allStudents.filter(s => isStudentInPeriod(s, activePeriodName));
     }
     
-    const todayStr = format(new Date(), 'yyyy-MM-dd');
+    const todayStr = selectedDate;
     const index = db.transaction('behaviors').store.index('by-date');
     const todayBehaviors = await index.getAll(todayStr);
     setBehaviorsHistory(todayBehaviors);
@@ -146,7 +147,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
         id: `beh_${now}_${Math.random().toString(36).substring(2)}`,
         studentId,
         timestamp: now,
-        date: format(now, 'yyyy-MM-dd'),
+        date: selectedDate,
         type: b.type as any,
         category: b.name,
         points: b.points,
@@ -161,7 +162,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
             id: `scan_${now}_${Math.random().toString(36).substring(2)}`,
             studentId,
             timestamp: now,
-            date: format(now, 'yyyy-MM-dd'),
+            date: selectedDate,
             periodName: activePeriodName || '',
             scheduleId: activeScheduleId,
             status: 'success',
@@ -335,6 +336,12 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
         </div>
 
         <div className="flex items-center gap-2">
+            <Input 
+                type="date"
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+                className="w-32 text-xs h-8"
+            />
             <Input 
                 placeholder="Search students..."
                 value={searchQuery}
