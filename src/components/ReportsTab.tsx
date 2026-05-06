@@ -17,7 +17,7 @@ interface ReportsTabProps {
 const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');
 
 export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule }: ReportsTabProps) {
-  const [activeTab, setActiveTab] = useState<'logs' | 'student-summary' | 'class-summary'>('logs');
+  const [activeTab, setActiveTab] = useState<'logs' | 'student-summary' | 'class-summary' | 'behavior-logs'>('logs');
   const [scans, setScans] = useState<(ScanEvent & { studentInfo?: Student })[]>([]);
   const [allStudents, setAllStudents] = useState<Student[]>([]);
   const [allBehaviors, setAllBehaviors] = useState<BehaviorEvent[]>([]);
@@ -493,6 +493,10 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
                 onClick={() => setActiveTab('class-summary')}
                 className={cn("text-[10px] font-bold uppercase tracking-widest pb-1 border-b-2 transition-colors", activeTab === 'class-summary' ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-400 hover:text-slate-600")}
               >Class Summary</button>
+              <button 
+                onClick={() => setActiveTab('behavior-logs')}
+                className={cn("text-[10px] font-bold uppercase tracking-widest pb-1 border-b-2 transition-colors", activeTab === 'behavior-logs' ? "border-indigo-600 text-indigo-600" : "border-transparent text-slate-400 hover:text-slate-600")}
+              >Behavior Logs</button>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -652,6 +656,33 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
                       <TableCell className="text-[11px] text-right font-mono font-black text-indigo-600">{stats.total}</TableCell>
                     </TableRow>
                   );
+                })}
+              </TableBody>
+            </Table>
+        )}
+        {activeTab === 'behavior-logs' && (
+            <Table className="min-w-[600px]">
+              <TableHeader className="bg-slate-50/50">
+                <TableRow className="hover:bg-transparent border-slate-200">
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 h-10">Time</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 h-10">Student</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 h-10">Category</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 h-10">Points</TableHead>
+                  <TableHead className="text-[10px] font-bold uppercase text-slate-500 h-10">Notes</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {allBehaviors.map(b => {
+                    const student = allStudents.find(s => s.id === b.studentId);
+                    return (
+                        <TableRow key={b.id} className="hover:bg-slate-50/50 transition-colors border-slate-100">
+                            <TableCell className="text-[11px] font-medium text-slate-600">{format(new Date(b.timestamp), 'h:mm a')}</TableCell>
+                            <TableCell className="text-[11px] font-bold text-slate-700">{student ? `${student.firstName} ${student.lastName}` : 'Unknown'}</TableCell>
+                            <TableCell className="text-[11px] font-medium text-slate-600">{b.category}</TableCell>
+                            <TableCell className="text-[11px] font-mono text-slate-600">{b.points}</TableCell>
+                            <TableCell className="text-[11px] text-slate-600">{b.notes || '-'}</TableCell>
+                        </TableRow>
+                    );
                 })}
               </TableBody>
             </Table>

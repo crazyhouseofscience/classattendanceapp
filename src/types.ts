@@ -22,6 +22,7 @@ export interface Student {
   order?: number;
   x?: number;
   y?: number;
+  needsFollowUp?: boolean;
 }
 
 export interface Behavior {

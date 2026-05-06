@@ -189,6 +189,13 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
     }
   };
 
+  const toggleFollowUp = async (student: Student) => {
+    const db = await getDB();
+    await db.put('students', { ...student, needsFollowUp: !student.needsFollowUp });
+    loadData();
+    triggerAutoBackup();
+  };
+
   const saveBehaviors = async (newBehaviors: any[]) => {
     const db = await getDB();
     await db.put('settings', { key: 'custom_behaviors', value: newBehaviors });
@@ -464,6 +471,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
                              studentBehaviors={behaviorsHistory.filter(b => b.studentId === student.id)}
                              onTrack={(b: any) => trackBehavior(student.id, b)}
                              onUndo={() => undoLastBehavior(student.id)}
+                             onToggleFollowUp={() => toggleFollowUp(student)}
                              compactMode={compactMode}
                              isAbsent={absentStudents.has(student.id)}
                              isLate={lateStudents.has(student.id)}
@@ -486,6 +494,7 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
                                 studentBehaviors={behaviorsHistory.filter(b => b.studentId === student.id)}
                                 onTrack={(b: any) => trackBehavior(student.id, b)}
                                 onUndo={() => undoLastBehavior(student.id)}
+                                onToggleFollowUp={() => toggleFollowUp(student)}
                                 compactMode={compactMode}
                                 isAbsent={absentStudents.has(student.id)}
                                 isLate={lateStudents.has(student.id)}
@@ -630,7 +639,7 @@ function DraggableStudentCard({ student, x, y, behaviors, studentBehaviors, onTr
 }
 */
 
-function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUndo, compactMode, dragHandleProps, isAbsent, isLate }: any) {
+function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUndo, onToggleFollowUp, compactMode, dragHandleProps, isAbsent, isLate }: any) {
     const [comment, setComment] = useState('');
     const getSumForBehavior = (bName: string) => {
         return studentBehaviors
@@ -666,6 +675,9 @@ function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUn
                             <GripHorizontal size={12} />
                         </div>
                     )}
+                    <button onClick={onToggleFollowUp} className={cn("p-1 rounded-sm", student.needsFollowUp ? "bg-amber-100 text-amber-600" : "text-slate-300 hover:text-amber-500")}>
+                        <div className={cn("w-2 h-2 rounded-full", student.needsFollowUp ? "bg-amber-500" : "bg-slate-300")}></div>
+                    </button>
                     <span className={cn(
                         "font-bold text-sm truncate text-slate-800",
                         isAbsent && "text-red-600 line-through",
@@ -754,7 +766,7 @@ function InlineStudentCard({ student, behaviors, studentBehaviors, onTrack, onUn
     );
 }
 
-function DraggableStudentCard({ student, x, y, behaviors, studentBehaviors, onTrack, onUndo, compactMode, isAbsent, isLate }: any) {
+function DraggableStudentCard({ student, x, y, behaviors, studentBehaviors, onTrack, onUndo, onToggleFollowUp, compactMode, isAbsent, isLate }: any) {
     const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: student.id });
     const style: React.CSSProperties = {
         transform: CSS.Translate.toString(transform),
@@ -772,6 +784,7 @@ function DraggableStudentCard({ student, x, y, behaviors, studentBehaviors, onTr
                 studentBehaviors={studentBehaviors} 
                 onTrack={onTrack} 
                 onUndo={onUndo}
+                onToggleFollowUp={onToggleFollowUp}
                 compactMode={compactMode} 
                 dragHandleProps={{...attributes, ...listeners}}
                 isAbsent={isAbsent} 

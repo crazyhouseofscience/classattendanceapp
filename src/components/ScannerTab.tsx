@@ -137,7 +137,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
      return { status: 'OnTime', text: 'On Time', time: scan.timestamp, excused: !!scan.isExcused, noPass: !!scan.hasNoPass, scanId: scan.id };
   };
 
-  const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status' | 'rank' | 'id'>('lastName');
+  const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status' | 'rank' | 'id' | 'time'>('lastName');
   const [elapsedTime, setElapsedTime] = useState<string>('00:00');
   const [manualStartTimeInternal, setManualStartTimeInternal] = useState<string | null>(null);
   const [manualEndTimeInternal, setManualEndTimeInternal] = useState<string | null>(null);
@@ -202,6 +202,16 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   }, [currentPeriodConfig, manualStartTime, manualEndTime]);
 
   const sortedStudents = [...students].sort((a, b) => {
+    if (sortBy === 'time') {
+       const timeA = getStudentStatus(a).time || 0;
+       const timeB = getStudentStatus(b).time || 0;
+       // Arrival time sorted asc, but absent get stuck at the end
+       if (timeA === 0 && timeB === 0) return 0;
+       if (timeA === 0) return 1;
+       if (timeB === 0) return -1;
+       return timeA - timeB;
+    }
+
     if (sortBy === 'status') {
       const statusA = getStudentStatus(a).status;
       const statusB = getStudentStatus(b).status;
@@ -793,6 +803,14 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                     className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'rank' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
                  >
                     Rank
+                 </Button>
+                 <Button 
+                    variant={sortBy === 'time' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setSortBy('time')}
+                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'time' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                 >
+                    Arrival
                  </Button>
               </div>
            )}
