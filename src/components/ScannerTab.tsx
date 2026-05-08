@@ -682,13 +682,17 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
           </div>
         </div>
 
-        <Card className={`bg-white border shadow-sm transition-colors overflow-hidden ${isReady ? (isFocused ? 'border-green-500' : 'border-green-200') : 'border-red-500'}`}>
+        <Card className={`border shadow-sm transition-all duration-300 overflow-hidden ${
+          isReady 
+            ? (isFocused ? 'border-green-500 bg-green-50 ring-2 ring-green-100' : 'border-green-200 bg-white') 
+            : 'border-red-500 bg-red-50'
+        }`}>
           <CardContent className="p-0">
-            <form onSubmit={handleScan} className="flex h-8 items-stretch">
+            <form onSubmit={handleScan} className="flex h-10 items-stretch">
               <input 
                 ref={inputRef}
                 type="text" 
-                className="flex-1 text-base px-3 focus:outline-none font-mono tracking-widest transition-all bg-transparent min-w-0"
+                className={`flex-1 text-base px-3 focus:outline-none font-mono tracking-widest transition-all bg-transparent min-w-0 ${isReady ? 'text-green-900 placeholder:text-green-300' : 'text-red-900 placeholder:text-red-300'}`}
                 autoFocus
                 value={barcode}
                 onChange={e => setBarcode(e.target.value)}
