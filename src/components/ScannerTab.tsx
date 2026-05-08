@@ -97,6 +97,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     setGracePeriodState(val);
   };
 
+  const [isFocused, setIsFocused] = useState(false);
   const [view, setView] = useState<'attendance' | 'movement'>('attendance');
 
   const isReady = activePeriodName && activePeriodName !== 'all' && activeScheduleId;
@@ -681,7 +682,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
           </div>
         </div>
 
-        <Card className="bg-white border shadow-sm transition-colors border-indigo-100 overflow-hidden">
+        <Card className={`bg-white border shadow-sm transition-colors overflow-hidden ${isReady ? (isFocused ? 'border-green-500' : 'border-green-200') : 'border-red-500'}`}>
           <CardContent className="p-0">
             <form onSubmit={handleScan} className="flex h-8 items-stretch">
               <input 
@@ -691,6 +692,8 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                 autoFocus
                 value={barcode}
                 onChange={e => setBarcode(e.target.value)}
+                onFocus={() => setIsFocused(true)}
+                onBlur={() => setIsFocused(false)}
                 placeholder="PROMPT TO SCAN..."
               />
               <div className="hidden lg:flex bg-slate-50 px-2 items-center border-l gap-1">
