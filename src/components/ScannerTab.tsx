@@ -98,7 +98,21 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   };
 
   const [isFocused, setIsFocused] = useState(false);
+  const [windowFocused, setWindowFocused] = useState(true);
   const [view, setView] = useState<'attendance' | 'movement'>('attendance');
+
+  useEffect(() => {
+    const handleFocus = () => setWindowFocused(true);
+    const handleBlur = () => setWindowFocused(false);
+    
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+    
+    return () => {
+        window.removeEventListener('focus', handleFocus);
+        window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
 
   const isReady = activePeriodName && activePeriodName !== 'all' && activeScheduleId;
   const currentPeriodConfig = activeSchedule?.periods.find(p => p.name === activePeriodName);
@@ -602,6 +616,14 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] relative">
+      {!windowFocused && (
+          <div className="fixed inset-0 z-50 bg-red-600/90 flex items-center justify-center pointer-events-none p-10 animate-pulse">
+              <div className="bg-white p-10 rounded-2xl shadow-2xl text-center border-4 border-red-700">
+                  <h1 className="text-6xl font-black text-red-600 mb-4">SCANNER NOT FOCUSED</h1>
+                  <p className="text-2xl font-bold text-slate-800">CLICK TO REACTIVATE</p>
+              </div>
+          </div>
+      )}
       {/* Fixed Sticky Header */}
       <div className="sticky top-0 z-10 bg-slate-50 border-b pb-1 mb-1">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-2">
