@@ -12,6 +12,7 @@ export interface Student {
   y?: number;
   homeroom?: string;
   email?: string;
+  needsFollowUp?: boolean;
 }
 
 export interface PeriodConfig {
@@ -37,9 +38,9 @@ export interface ScanEvent {
   status: 'success' | 'unknown_barcode' | 'not_in_period';
   isExcused?: boolean;
   hasNoPass?: boolean;
-  manualStatus?: 'Present' | 'Late' | 'Absent';
+  manualStatus?: 'Present' | 'Late' | 'Absent' | 'Cut' | 'Left Early';
   notes?: string;
-  movementType?: 'Attendance' | 'Bathroom' | 'Nurse' | 'Office' | 'Guidance' | 'Returned';
+  movementType?: 'Attendance' | 'Bathroom' | 'Nurse' | 'Office' | 'Guidance' | 'Returned' | 'Water';
 }
 
 export interface BehaviorEvent {

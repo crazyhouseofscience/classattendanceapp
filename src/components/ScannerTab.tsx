@@ -34,6 +34,22 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const [noteStudent, setNoteStudent] = useState<Student | null>(null);
   const [noteText, setNoteText] = useState('');
 
+  const trackBehavior = async (studentId: string, behavior: { name: string, points: number, type: string }, notes?: string) => {
+    const db = await getDB();
+    const newBehavior: BehaviorEvent = {
+        id: `behavior_${studentId}_${Date.now()}`,
+        studentId,
+        timestamp: Date.now(),
+        date: format(new Date(), 'yyyy-MM-dd'),
+        type: behavior.type as any,
+        category: behavior.name,
+        points: behavior.points,
+        notes,
+        periodName: activePeriodName
+    };
+    await db.put('behaviors', newBehavior);
+  };
+
   const addNote = async () => {
     if (!noteStudent || !noteText.trim()) return;
     const db = await getDB();
@@ -121,7 +137,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
      // Attendance status is based on the EARLIEST Attendance scan
      const studentScans = scans.filter(s => 
        s.studentId === student.id && 
-       (s.movementType === 'Attendance' || (!s.movementType && !['Bathroom', 'Nurse', 'Office', 'Guidance', 'Returned'].includes(s.notes || '')))
+       (s.movementType === 'Attendance' || (!s.movementType && !['Bathroom', 'Nurse', 'Office', 'Guidance', 'Water', 'Returned'].includes(s.notes || '')))
      );
      // scans is sorted descending, so the earliest is the last element
      const scan = studentScans[studentScans.length - 1];
@@ -379,7 +395,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
         movementType = purpose;
     } else if (studentScans.length > 0) {
         const lastScanType = studentScans[studentScans.length - 1].movementType;
-        if (['Bathroom', 'Nurse', 'Office', 'Guidance'].includes(lastScanType)) {
+        if (['Bathroom', 'Water', 'Nurse', 'Office', 'Guidance'].includes(lastScanType)) {
             movementType = 'Returned';
         } else {
             movementType = 'Attendance'; // duplicate attendance scan
@@ -460,7 +476,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     }
   };
 
-  const manualMark = async (student: Student, forceStatus?: 'Present' | 'Late' | 'Absent', isExcused = false) => {
+  const manualMark = async (student: Student, forceStatus?: 'Present' | 'Late' | 'Absent' | 'Cut' | 'Left Early', isExcused = false) => {
     if (!activePeriodName || activePeriodName === 'all' || !activeScheduleId) return;
     const db = await getDB();
     const now = Date.now();
@@ -468,12 +484,14 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     const studentScans = scans.filter(s => s.studentId === student.id).sort((a,b) => a.timestamp - b.timestamp);
     const primaryScan = studentScans[0];
 
-    if (forceStatus === 'Absent') {
+    if (forceStatus === 'Absent' || forceStatus === 'Cut') {
        if (primaryScan) {
           await db.delete('scans', primaryScan.id);
        }
-       await loadData();
-       return;
+       if (forceStatus === 'Absent') {
+          await loadData();
+          return;
+       }
     }
 
     if (primaryScan) {
@@ -596,7 +614,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const getActivityLog = () => {
     // Show all scans that are NOT the attendance scan
     return scans.filter(s => {
-      const isLegacyAttendance = !s.movementType && !['Bathroom', 'Nurse', 'Office', 'Guidance', 'Returned'].includes(s.notes || '');
+      const isLegacyAttendance = !s.movementType && !['Bathroom', 'Nurse', 'Office', 'Guidance', 'Water', 'Returned'].includes(s.notes || '');
       return s.movementType !== 'Attendance' && !isLegacyAttendance;
     }).sort((a,b) => b.timestamp - a.timestamp);
   };
@@ -608,7 +626,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
      const studentLogs = logEntries.filter(l => l.studentId === studentId);
      if (studentLogs.length === 0) return null;
      const latest = studentLogs[0]; // sorted desc
-     if (['Bathroom', 'Nurse', 'Office', 'Guidance'].includes(latest.notes || '')) {
+     if (['Bathroom', 'Nurse', 'Office', 'Guidance', 'Water'].includes(latest.notes || '')) {
         return { out: true, reason: latest.notes, logId: latest.id, time: latest.timestamp };
      }
      return null;
@@ -723,7 +741,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                 placeholder="PROMPT TO SCAN..."
               />
               <div className="hidden lg:flex bg-slate-50 px-2 items-center border-l gap-1">
-                {['Bathroom', 'Nurse', 'Office', 'Guidance'].map(reason => (
+                {['Bathroom', 'Water', 'Nurse', 'Office', 'Guidance'].map(reason => (
                    <Button 
                       key={reason}
                       type="button" 
@@ -795,7 +813,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                  className={`h-7 px-4 text-[10px] font-bold uppercase relative ${view === 'movement' ? 'bg-indigo-600 shadow-sm' : 'text-slate-500'}`}
               >
                  Movement
-                 {logEntries.some(l => ['Bathroom', 'Nurse', 'Office', 'Guidance'].includes(l.notes || '')) && (
+                 {logEntries.some(l => ['Bathroom', 'Water', 'Nurse', 'Office', 'Guidance'].includes(l.notes || '')) && (
                     <span className="absolute -top-1 -right-0.5 flex h-2 w-2">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
@@ -890,9 +908,12 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                         
                         let rowColor = idx % 2 === 0 ? 'bg-white' : 'bg-slate-50/60';
                         let nameColor = 'text-slate-700';
-                        if (statusInfo.status === 'Absent') {
+                        if (statusInfo.status === 'Absent' || statusInfo.status === 'Cut') {
                           rowColor = 'bg-red-50/40';
                           nameColor = 'text-red-700';
+                        } else if (statusInfo.status === 'Left Early') {
+                          rowColor = 'bg-blue-50/20';
+                          nameColor = 'text-blue-800';
                         } else if (statusInfo.status === 'Present') {
                           rowColor = 'bg-green-50/20';
                           nameColor = 'text-green-800';
@@ -934,7 +955,8 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                              NO PASS
                                           </Button>
                                           <Button variant="ghost" size="sm" onClick={() => manualMark(student, 'Absent')} className="h-6 w-6 p-0 text-sm text-red-200 hover:text-red-500 hover:bg-red-50 transition-colors uppercase font-black ml-1">X</Button>
-<Button variant="ghost" size="sm" onClick={() => { trackBehavior(student.id, { name: 'Cut Class', points: -2, type: 'Negative' }, 'Student cut class'); manualMark(student, 'Absent'); }} className="h-6 px-2 text-[10px] tracking-tight font-black uppercase text-slate-400 hover:bg-slate-100 transition-colors ml-1">CUT</Button>
+                                          <Button variant="ghost" size="sm" onClick={() => { trackBehavior(student.id, { name: 'Cut Class', points: -2, type: 'Negative' }, 'Student cut class'); manualMark(student, 'Cut'); }} className="h-6 px-2 text-[10px] tracking-tight font-black uppercase text-slate-400 hover:bg-slate-100 transition-colors ml-1">CUT</Button>
+                                          <Button variant="ghost" size="sm" onClick={() => manualMark(student, 'Left Early')} className="h-6 px-2 text-[10px] tracking-tight font-black uppercase text-blue-400 hover:bg-blue-50 transition-colors ml-1">LEFT EARLY</Button>
                                        </div>
                                     )}
                                   </div>
@@ -945,6 +967,8 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                     {statusInfo.status === 'Late' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-amber-100 text-amber-700 border border-amber-200 uppercase">LATE</span>}
                                     {statusInfo.status === 'Present' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase">PRESENT</span>}
                                     {statusInfo.status === 'Absent' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-slate-50 text-slate-300 border border-slate-100 uppercase">ABSENT</span>}
+                                    {statusInfo.status === 'Cut' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-red-100 text-red-700 border border-red-200 uppercase">CUT</span>}
+                                    {statusInfo.status === 'Left Early' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-blue-100 text-blue-700 border border-blue-200 uppercase">LEFT EARLY</span>}
                                     {statusInfo.excused && <span className="px-2.5 py-1 rounded-[2px] text-[10px] font-black bg-blue-600 text-white shadow-sm uppercase tracking-tighter">Pass</span>}
                                     {statusInfo.noPass && <span className="px-2.5 py-1 rounded-[2px] text-[10px] font-black bg-red-600 text-white shadow-sm uppercase tracking-tighter">No Pass</span>}
                                     {statusInfo.time && (
@@ -999,8 +1023,8 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                          <span className="text-[9px] text-slate-400 font-mono">{student.id}</span>
                                       </div>
                                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                         {['B', 'N', 'O', 'G'].map(char => {
-                                            const labelMap: Record<string, string> = { 'B': 'Bathroom', 'N': 'Nurse', 'O': 'Office', 'G': 'Guidance' };
+                                         {['B', 'W', 'N', 'O', 'G'].map(char => {
+                                            const labelMap: Record<string, string> = { 'B': 'Bathroom', 'W': 'Water', 'N': 'Nurse', 'O': 'Office', 'G': 'Guidance' };
                                             return (
                                                <Button 
                                                   key={char}
@@ -1097,7 +1121,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                 </TableCell>
                                 <TableCell className="py-1">
                                    <div className="flex items-center gap-1">
-                                      {['Bathroom', 'Nurse', 'Office', 'Guidance', 'Returned'].map(r => (
+                                      {['Bathroom', 'Water', 'Nurse', 'Office', 'Guidance', 'Returned'].map(r => (
                                          <button
                                             key={r}
                                             onClick={() => updateLogReason(log.id, r === 'Returned' ? null : r)}
