@@ -61,6 +61,8 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const [windowFocused, setWindowFocused] = useState(true);
   const [scannerEnabled, setScannerEnabled] = useState(true);
   const [view, setView] = useState<'attendance' | 'movement'>('attendance');
+  const [manualSearchOpen, setManualSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status' | 'rank' | 'id' | 'time'>('lastName');
   const [markArrivalTime, setMarkArrivalTime] = useState(format(new Date(), 'HH:mm'));
@@ -427,11 +429,56 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     return () => window.removeEventListener('click', handleGlobalFocus);
   }, []);
 
+  const playSound = (type: 'success' | 'error') => {
+    try {
+      const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const oscillator = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+
+      oscillator.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+
+      if (type === 'success') {
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A5
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        oscillator.start();
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.1);
+        oscillator.stop(audioCtx.currentTime + 0.1);
+      } else {
+        oscillator.type = 'square';
+        oscillator.frequency.setValueAtTime(220, audioCtx.currentTime); // A3
+        gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+        oscillator.start();
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        oscillator.stop(audioCtx.currentTime + 0.3);
+      }
+    } catch (e) {
+      console.warn("Audio feedback failed:", e);
+    }
+  };
+
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
-    const code = barcode.trim();
+    // Get value directly from ref for maximum speed/reliability with hardware scanners
+    const rawCode = inputRef.current?.value || barcode;
+    const code = rawCode.trim();
+    
     if (!code) return;
+
+    // Fast clear the UI state and the actual input element
     setBarcode('');
+    if (inputRef.current) inputRef.current.value = '';
+    setManualSearchOpen(false);
+
+    // Validation: Student IDs are strictly 6 digits
+    if (code.length !== 6) {
+      playSound('error');
+      toast.error(`Invalid ID length: ${code.length} digits. Please scan again. (Expected 6)`);
+      setLastScan({ student: null, barcode: code, status: 'unknown_barcode', timestamp: Date.now() });
+      return;
+    }
+
     const purpose = scanReason;
     setScanReason(null);
 
@@ -440,6 +487,14 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
     const db = await getDB();
     const student = await db.get('students', code);
+
+    if (!student) {
+      playSound('error');
+      setLastScan({ student: null, barcode: code, status: 'unknown_barcode', timestamp: Date.now() });
+      return;
+    }
+
+    playSound('success');
     
     const now = Date.now();
     const todayStr = viewDate;
@@ -812,14 +867,35 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
               <input 
                 ref={inputRef}
                 type="text" 
+                inputMode="numeric"
+                pattern="[0-9]*"
+                maxLength={6}
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck={false}
                 className={`flex-1 text-base px-3 focus:outline-none font-mono tracking-widest transition-all bg-transparent min-w-0 ${isReady ? 'text-green-900 placeholder:text-green-300' : 'text-red-900 placeholder:text-red-300'}`}
                 autoFocus
                 value={barcode}
                 onChange={e => setBarcode(e.target.value)}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
-                placeholder="PROMPT TO SCAN..."
+                placeholder="PROMPT TO SCAN (6 DIGITS)..."
               />
+              
+              {barcode && (
+                <button 
+                  type="button" 
+                  onClick={() => {
+                    setBarcode('');
+                    if (inputRef.current) inputRef.current.value = '';
+                    inputRef.current?.focus();
+                  }}
+                  className="px-2 text-slate-300 hover:text-slate-500 transition-colors"
+                >
+                  <XCircle size={16} />
+                </button>
+              )}
+
               <div className="hidden lg:flex bg-slate-50 px-2 items-center border-l gap-1">
                 {['Bathroom', 'Water', 'Nurse', 'Office', 'Guidance'].map(reason => (
                    <Button 
@@ -841,6 +917,19 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
           </CardContent>
         </Card>
 
+        {isReady && (
+          <div className="flex justify-center -mt-1">
+            <Button 
+              variant="link" 
+              size="sm" 
+              className="text-[9px] font-black uppercase text-indigo-400 hover:text-indigo-600 h-6"
+              onClick={() => setManualSearchOpen(true)}
+            >
+              Scanner failing? Search student manually
+            </Button>
+          </div>
+        )}
+
         {lastScan && (
           <div className={`mt-2 p-1.5 rounded-lg flex items-center justify-between gap-3 border shadow-sm animate-in fade-in slide-in-from-top-1
             ${lastScan.status === 'success' ? 'bg-green-50 text-green-800 border-green-200' : 
@@ -861,10 +950,22 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                     ? `${lastScan.student.firstName} ${lastScan.student.lastName}`
                     : `ID: ${lastScan.barcode}`}
                 </h2>
-                <p className="text-[9px] font-bold uppercase opacity-60 leading-none">
-                  {lastScan.status === 'success' ? 'MATCH' : 
-                   lastScan.status === 'not_in_period' ? 'OUT OF PERIOD' : 'NOT FOUND'}
-                </p>
+                <div className="flex items-center gap-2">
+                  <p className="text-[9px] font-bold uppercase opacity-60 leading-none">
+                    {lastScan.status === 'success' ? 'MATCH' : 
+                    lastScan.status === 'not_in_period' ? 'OUT OF PERIOD' : 'NOT FOUND'}
+                  </p>
+                  {lastScan.status === 'unknown_barcode' && (
+                    <Button 
+                      variant="link" 
+                      size="sm" 
+                      className="h-auto p-0 text-[9px] font-black uppercase text-red-600 hover:text-red-800"
+                      onClick={() => setManualSearchOpen(true)}
+                    >
+                      Login Manually Instead
+                    </Button>
+                  )}
+                </div>
               </div>
             </div>
             <div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 ml-4 py-0.5">
@@ -1414,6 +1515,79 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                </DialogFooter>
             </DialogContent>
          </Dialog>
+
+          <Dialog open={manualSearchOpen} onOpenChange={setManualSearchOpen}>
+            <DialogContent className="sm:max-w-md p-0 overflow-hidden">
+               <DialogHeader className="p-4 bg-indigo-600 text-white">
+                  <DialogTitle className="flex items-center gap-2">
+                     <Plus className="w-5 h-5" />
+                     Manual Student Entry
+                  </DialogTitle>
+                  <p className="text-indigo-100 text-[10px] font-bold uppercase tracking-wider">
+                     Use this if the scanner is not working for a student
+                  </p>
+               </DialogHeader>
+               <div className="p-4 space-y-4">
+                  <div className="relative">
+                    <Input 
+                      placeholder="Search by name or ID..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      className="pl-9 h-10 font-bold"
+                      autoFocus
+                    />
+                    <Plus className="absolute left-3 top-3 w-4 h-4 text-slate-400 rotate-45" />
+                  </div>
+                  
+                  <div className="max-h-[300px] overflow-y-auto space-y-1 p-1">
+                    {students
+                      .filter(s => {
+                        const q = searchQuery.toLowerCase();
+                        return s.firstName.toLowerCase().includes(q) || 
+                               s.lastName.toLowerCase().includes(q) || 
+                               s.id.includes(q);
+                      })
+                      .sort((a, b) => a.lastName.localeCompare(b.lastName))
+                      .map(student => (
+                        <Button
+                          key={student.id}
+                          variant="ghost"
+                          className="w-full justify-start h-12 flex flex-col items-start gap-0.5 hover:bg-slate-50 border border-transparent hover:border-slate-200"
+                          onClick={() => {
+                            setBarcode(student.id);
+                            if (inputRef.current) inputRef.current.value = student.id;
+                            setManualSearchOpen(false);
+                            setSearchQuery('');
+                            setTimeout(() => {
+                              const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+                              handleScan(fakeEvent);
+                            }, 50);
+                          }}
+                        >
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-slate-800">{student.firstName} {student.lastName}</span>
+                            <span className="text-[10px] font-mono text-slate-400">{student.id}</span>
+                          </div>
+                          <span className="text-[9px] font-bold text-slate-400 uppercase leading-none">
+                            {student.grade ? `${student.grade} Grade` : 'No Grade Info'}
+                          </span>
+                        </Button>
+                      ))}
+                    {students.length > 0 && students.filter(s => {
+                      const q = searchQuery.toLowerCase();
+                      return s.firstName.toLowerCase().includes(q) || s.lastName.toLowerCase().includes(q) || s.id.includes(q);
+                    }).length === 0 && searchQuery && (
+                      <div className="text-center py-8 text-slate-400 italic text-sm">
+                        No students match your search.
+                      </div>
+                    )}
+                  </div>
+               </div>
+               <DialogFooter className="bg-slate-50 p-3 border-t">
+                  <Button variant="ghost" onClick={() => setManualSearchOpen(false)} className="font-bold text-slate-500">Close</Button>
+               </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
       </div>
     </div>
