@@ -462,7 +462,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
-    const rawCode = inputRef.current?.value || '';
+    const rawCode = inputRef.current?.value || barcode;
     const code = rawCode.trim();
 
     // IMMEDIATE DOM CLEARANCE (Synchronous, before any async work)
@@ -880,7 +880,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                 spellCheck={false}
                 className={`flex-1 text-2xl px-3 focus:outline-none font-mono font-black tracking-widest transition-all bg-transparent min-w-0 ${isReady ? 'text-green-950 placeholder:text-green-300' : 'text-red-950 placeholder:text-red-300'}`}
                 autoFocus
-                defaultValue=""
+                value={barcode}
                 onChange={e => setBarcode(e.target.value)}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
