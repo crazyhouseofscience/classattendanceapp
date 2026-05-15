@@ -462,15 +462,18 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Get value directly from ref for maximum speed/reliability with hardware scanners
     const rawCode = inputRef.current?.value || '';
     const code = rawCode.trim();
-    if (!code) return;
 
-    // IMMEDIATE DOM CLEARANCE (Crucial for hardware scanners to not skip digits)
-    if (inputRef.current) inputRef.current.value = '';
+    // IMMEDIATE DOM CLEARANCE (Synchronous, before any async work)
+    if (inputRef.current) {
+      inputRef.current.value = '';
+      inputRef.current.focus(); 
+    }
     setBarcode('');
     setManualSearchOpen(false);
+    
+    if (!code) return;
 
     const purpose = scanReason;
     setScanReason(null);
@@ -870,7 +873,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                 spellCheck={false}
                 className={`flex-1 text-2xl px-3 focus:outline-none font-mono font-black tracking-widest transition-all bg-transparent min-w-0 ${isReady ? 'text-green-950 placeholder:text-green-300' : 'text-red-950 placeholder:text-red-300'}`}
                 autoFocus
-                defaultValue={barcode}
+                value={barcode}
                 onChange={e => setBarcode(e.target.value)}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
@@ -1159,7 +1162,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                   <div className="flex items-center gap-2 overflow-hidden">
                                      <span className={`text-xs font-bold leading-none truncate ${nameColor}`}>{student.firstName} {student.lastName}</span>
                                      {student.gradebookRank && <span className="text-[9px] bg-indigo-50 text-indigo-500 font-black px-1 rounded-sm shadow-sm ring-1 ring-indigo-200">#{student.gradebookRank}</span>}
-                                     <span className="text-sm text-slate-900 font-mono font-black tracking-tight leading-none uppercase shrink-0 bg-slate-100/80 px-1.5 py-0.5 rounded border border-slate-200">{student.id}</span>
+                                     <span className="text-sm text-slate-900 font-mono font-black tracking-tight leading-none uppercase shrink-0 bg-slate-100 px-1.5 py-0.5 rounded shadow-sm border border-slate-200">{student.id}</span>
                                      {moveStatus?.out && (
                                         <span className="inline-flex items-center gap-1 font-black text-[10px] text-amber-600 uppercase bg-amber-50 px-2 rounded ring-1 ring-amber-100 leading-none py-1.5">
                                            {moveStatus.reason}
@@ -1364,7 +1367,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                    <div className="flex justify-between items-start">
                                       <div className="flex flex-col">
                                          <span className="text-xs font-bold text-slate-700">{student.firstName} {student.lastName}</span>
-                                         <span className="text-xs text-slate-900 font-mono font-black bg-slate-100 px-1 rounded w-fit">{student.id}</span>
+                                         <span className="text-sm text-slate-900 font-mono font-black bg-slate-100 px-1.5 py-0.5 rounded shadow-sm border border-slate-200 w-fit">{student.id}</span>
                                       </div>
                                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                                          {['B', 'W', 'N', 'O', 'G'].map(char => {
@@ -1627,7 +1630,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                         >
                           <div className="flex items-center gap-2">
                             <span className="font-black text-slate-800">{student.firstName} {student.lastName}</span>
-                            <span className="text-xs font-mono font-black text-slate-950 bg-slate-100 px-1 rounded">{student.id}</span>
+                            <span className="text-sm font-mono font-black text-slate-950 bg-white px-1.5 py-0.5 rounded border border-slate-200 shadow-sm">{student.id}</span>
                           </div>
                           <span className="text-[9px] font-bold text-slate-400 uppercase leading-none">
                             {student.grade ? `${student.grade} Grade` : 'No Grade Info'}
