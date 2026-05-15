@@ -39,6 +39,7 @@ export interface ScanEvent {
   isExcused?: boolean;
   hasNoPass?: boolean;
   manualStatus?: 'Present' | 'Late' | 'Absent' | 'Cut' | 'Left Early';
+  leftEarly?: boolean;
   notes?: string;
   movementType?: 'Attendance' | 'Bathroom' | 'Nurse' | 'Office' | 'Guidance' | 'Returned' | 'Water';
 }

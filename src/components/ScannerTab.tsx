@@ -142,10 +142,20 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
      // scans is sorted descending, so the earliest is the last element
      const scan = studentScans[studentScans.length - 1];
 
-     if (!scan) return { status: 'Absent', text: 'Absent', time: null, scanId: null };
+     if (!scan) return { status: 'Absent', text: 'Absent', time: null, scanId: null, leftEarly: false };
+     
+     const leftEarly = !!scan.leftEarly;
      
      if (scan.manualStatus) {
-        return { status: scan.manualStatus as any, text: scan.manualStatus, time: scan.timestamp, excused: !!scan.isExcused, noPass: !!scan.hasNoPass, scanId: scan.id };
+        return { 
+          status: scan.manualStatus as any, 
+          text: scan.manualStatus, 
+          time: scan.timestamp, 
+          excused: !!scan.isExcused, 
+          noPass: !!scan.hasNoPass, 
+          scanId: scan.id,
+          leftEarly
+        };
      }
 
      const effectiveStartTime = manualStartTime || currentPeriodConfig?.startTime;
@@ -161,11 +171,11 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
          const scanMinutes = scanH * 60 + scanM;
 
          if (scanMinutes > cutoffMinutes) {
-             return { status: 'Late', text: 'Late', time: scan.timestamp, excused: !!scan.isExcused, noPass: !!scan.hasNoPass, scanId: scan.id };
+             return { status: 'Late', text: 'Late', time: scan.timestamp, excused: !!scan.isExcused, noPass: !!scan.hasNoPass, scanId: scan.id, leftEarly };
          }
      }
      
-     return { status: 'OnTime', text: 'On Time', time: scan.timestamp, excused: !!scan.isExcused, noPass: !!scan.hasNoPass, scanId: scan.id };
+     return { status: 'OnTime', text: 'On Time', time: scan.timestamp, excused: !!scan.isExcused, noPass: !!scan.hasNoPass, scanId: scan.id, leftEarly };
   };
 
   const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status' | 'rank' | 'id' | 'time'>('lastName');
@@ -495,9 +505,20 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     }
 
     if (primaryScan) {
-       const updated = { ...primaryScan, manualStatus: forceStatus || 'Present', isExcused };
-       await db.put('scans', updated);
+       if (forceStatus === 'Left Early') {
+          const updated = { ...primaryScan, leftEarly: !primaryScan.leftEarly };
+          await db.put('scans', updated);
+          toast.success(`${student.firstName} ${updated.leftEarly ? 'marked as' : 'removed from'} Left Early`);
+       } else {
+          const updated = { ...primaryScan, manualStatus: forceStatus || 'Present', isExcused };
+          await db.put('scans', updated);
+          toast.success(`${student.firstName} marked ${forceStatus || 'Present'}${isExcused ? ' (Excused)' : ''}`);
+       }
     } else {
+       if (forceStatus === 'Left Early') {
+          toast.error("Cannot mark Left Early for absent student");
+          return;
+       }
        const scanEvent: ScanEvent = {
          id: `manual_${student.id}_${now}`,
          studentId: student.id,
@@ -911,10 +932,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                         if (statusInfo.status === 'Absent' || statusInfo.status === 'Cut') {
                           rowColor = 'bg-red-50/40';
                           nameColor = 'text-red-700';
-                        } else if (statusInfo.status === 'Left Early') {
-                          rowColor = 'bg-blue-50/20';
-                          nameColor = 'text-blue-800';
-                        } else if (statusInfo.status === 'Present') {
+                        } else if (statusInfo.status === 'Present' || statusInfo.status === 'OnTime') {
                           rowColor = 'bg-green-50/20';
                           nameColor = 'text-green-800';
                         } else if (statusInfo.status === 'Late') {
@@ -956,7 +974,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                           </Button>
                                           <Button variant="ghost" size="sm" onClick={() => manualMark(student, 'Absent')} className="h-6 w-6 p-0 text-sm text-red-200 hover:text-red-500 hover:bg-red-50 transition-colors uppercase font-black ml-1">X</Button>
                                           <Button variant="ghost" size="sm" onClick={() => { trackBehavior(student.id, { name: 'Cut Class', points: -2, type: 'Negative' }, 'Student cut class'); manualMark(student, 'Cut'); }} className="h-6 px-2 text-[10px] tracking-tight font-black uppercase text-slate-400 hover:bg-slate-100 transition-colors ml-1">CUT</Button>
-                                          <Button variant="ghost" size="sm" onClick={() => manualMark(student, 'Left Early')} className="h-6 px-2 text-[10px] tracking-tight font-black uppercase text-blue-400 hover:bg-blue-50 transition-colors ml-1">LEFT EARLY</Button>
+                                          <Button variant="ghost" size="sm" onClick={() => manualMark(student, 'Left Early')} className={`h-6 px-2 text-[10px] tracking-tight font-black uppercase transition-colors ml-1 ${statusInfo.leftEarly ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-300 hover:text-blue-500 hover:bg-blue-50'}`}>LEFT EARLY</Button>
                                        </div>
                                     )}
                                   </div>
@@ -968,7 +986,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                     {statusInfo.status === 'Present' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase">PRESENT</span>}
                                     {statusInfo.status === 'Absent' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-slate-50 text-slate-300 border border-slate-100 uppercase">ABSENT</span>}
                                     {statusInfo.status === 'Cut' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-red-100 text-red-700 border border-red-200 uppercase">CUT</span>}
-                                    {statusInfo.status === 'Left Early' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-blue-100 text-blue-700 border border-blue-200 uppercase">LEFT EARLY</span>}
+                                    {statusInfo.leftEarly && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-blue-600 text-white shadow-sm uppercase">LEFT EARLY</span>}
                                     {statusInfo.excused && <span className="px-2.5 py-1 rounded-[2px] text-[10px] font-black bg-blue-600 text-white shadow-sm uppercase tracking-tighter">Pass</span>}
                                     {statusInfo.noPass && <span className="px-2.5 py-1 rounded-[2px] text-[10px] font-black bg-red-600 text-white shadow-sm uppercase tracking-tighter">No Pass</span>}
                                     {statusInfo.time && (
