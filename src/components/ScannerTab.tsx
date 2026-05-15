@@ -115,7 +115,29 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
   const [isFocused, setIsFocused] = useState(false);
   const [windowFocused, setWindowFocused] = useState(true);
+  const [scannerEnabled, setScannerEnabled] = useState(true);
   const [view, setView] = useState<'attendance' | 'movement'>('attendance');
+
+  useEffect(() => {
+    const loadScannerSetting = async () => {
+      const db = await getDB();
+      const setting = await db.get('settings', 'scanner_enabled');
+      if (setting !== undefined) setScannerEnabled(setting.value);
+    };
+    loadScannerSetting();
+  }, []);
+
+  const toggleScanner = async () => {
+    const newValue = !scannerEnabled;
+    setScannerEnabled(newValue);
+    const db = await getDB();
+    await db.put('settings', { key: 'scanner_enabled', value: newValue });
+    if (newValue) {
+      toast.success('Scanner focus alerts enabled');
+    } else {
+      toast.warning('Scanner focus alerts disabled');
+    }
+  };
 
   useEffect(() => {
     const handleFocus = () => setWindowFocused(true);
@@ -655,7 +677,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
   return (
     <div className="flex flex-col h-[calc(100vh-7rem)] relative">
-      {!windowFocused && (
+      {!windowFocused && scannerEnabled && (
           <div className="fixed inset-0 z-50 bg-red-600/90 flex items-center justify-center pointer-events-none p-10 animate-pulse">
               <div className="bg-white p-10 rounded-2xl shadow-2xl text-center border-4 border-red-700">
                   <h1 className="text-6xl font-black text-red-600 mb-4">SCANNER NOT FOCUSED</h1>
@@ -729,6 +751,18 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                   Select period above
                </p>
              )}
+          </div>
+
+          <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-md border shadow-sm h-9">
+             <Label className="text-[10px] font-black text-slate-400 uppercase leading-none">Alerts</Label>
+             <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={toggleScanner}
+                className={`h-6 px-2 text-[10px] font-black uppercase transition-all ${scannerEnabled ? 'text-green-600 bg-green-50 hover:bg-green-100 ring-1 ring-green-200' : 'text-red-400 bg-red-50/50 hover:bg-red-50 ring-1 ring-red-100'}`}
+             >
+                {scannerEnabled ? 'ON' : 'OFF'}
+             </Button>
           </div>
 
           <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-md border shadow-sm h-9">
@@ -909,9 +943,11 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
              <Table className="min-w-[600px]">
                  <TableHeader className="bg-slate-50/90 sticky top-0 z-20 backdrop-blur-sm shadow-sm">
                    <TableRow className="h-6 border-b-2 bg-slate-50">
-                     <TableHead className="w-[180px] text-[10px] font-black uppercase py-0 px-2 h-6">Student Name</TableHead>
-                     <TableHead className="w-[280px] text-[10px] font-black uppercase py-0 px-2 h-6 text-left text-slate-500">Quick Actions</TableHead>
-                     <TableHead className="w-[140px] text-[10px] font-black uppercase py-0 px-2 h-6 text-center text-slate-500">Status</TableHead>
+                     <TableHead className="w-[150px] text-[10px] font-black uppercase py-0 px-2 h-6">Student Name</TableHead>
+                     <TableHead className="w-[240px] text-[10px] font-black uppercase py-0 px-2 h-6 text-left text-slate-500">Quick Actions</TableHead>
+                     <TableHead className="w-[85px] text-[10px] font-black uppercase py-0 px-2 h-6 text-left text-slate-500">Status</TableHead>
+                     <TableHead className="w-[90px] text-[10px] font-black uppercase py-0 px-2 h-6 text-center text-slate-500">Arrival</TableHead>
+                     <TableHead className="w-[120px] text-[10px] font-black uppercase py-0 px-2 h-6 text-left text-slate-500">Flags</TableHead>
                      <TableHead className="w-full"></TableHead>
                    </TableRow>
                  </TableHeader>
@@ -945,7 +981,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                key={student.id} 
                                className={`h-7 border-b group transition-colors ${rowColor}`}
                             >
-                               <TableCell className="w-[180px] py-0 px-2">
+                               <TableCell className="w-[150px] py-0 px-2">
                                   <div className="flex items-center gap-2 overflow-hidden">
                                      <span className={`text-xs font-bold leading-none truncate ${nameColor}`}>{student.firstName} {student.lastName}</span>
                                      {student.gradebookRank && <span className="text-[9px] bg-indigo-50 text-indigo-500 font-black px-1 rounded-sm shadow-sm ring-1 ring-indigo-200">#{student.gradebookRank}</span>}
@@ -957,7 +993,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                      )}
                                   </div>
                                </TableCell>
-                               <TableCell className="w-[280px] py-0 px-1.5 text-left">
+                               <TableCell className="w-[240px] py-0 px-1.5 text-left">
                                   <div className="flex justify-start items-center gap-2">
                                     {statusInfo.status === 'Absent' ? (
                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -979,24 +1015,30 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                     )}
                                   </div>
                                </TableCell>
-                               <TableCell className="w-[140px] py-0 px-1.5 text-center">
-                                   <div className="flex items-center justify-center gap-2">
-                                    {statusInfo.status === 'OnTime' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-green-100 text-green-700 border border-green-200 uppercase">ON TIME</span>}
-                                    {statusInfo.status === 'Late' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-amber-100 text-amber-700 border border-amber-200 uppercase">LATE</span>}
-                                    {statusInfo.status === 'Present' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase">PRESENT</span>}
-                                    {statusInfo.status === 'Absent' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-slate-50 text-slate-300 border border-slate-100 uppercase">ABSENT</span>}
-                                    {statusInfo.status === 'Cut' && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-red-100 text-red-700 border border-red-200 uppercase">CUT</span>}
-                                    {statusInfo.leftEarly && <span className="px-2.5 py-1 rounded-[2px] text-xs font-black bg-blue-600 text-white shadow-sm uppercase">LEFT EARLY</span>}
-                                    {statusInfo.excused && <span className="px-2.5 py-1 rounded-[2px] text-[10px] font-black bg-blue-600 text-white shadow-sm uppercase tracking-tighter">Pass</span>}
-                                    {statusInfo.noPass && <span className="px-2.5 py-1 rounded-[2px] text-[10px] font-black bg-red-600 text-white shadow-sm uppercase tracking-tighter">No Pass</span>}
-                                    {statusInfo.time && (
-                                       <div className="flex items-center gap-1 group/time ml-2">
-                                          <span className="text-base text-slate-400 font-mono opacity-70 leading-none whitespace-nowrap">{format(new Date(statusInfo.time), 'h:mm a')}</span>
-                                          <button onClick={() => statusInfo.scanId && openEditTime(statusInfo.scanId, statusInfo.time!)} className="opacity-0 group-hover/time:opacity-100 p-0.5 text-slate-300 hover:text-indigo-600 transition-opacity" title="Edit Time">
-                                             <Edit2 className="w-3.5 h-3.5" />
-                                          </button>
-                                       </div>
-                                    )}
+                               <TableCell className="w-[85px] py-0 px-1.5 text-left border-l border-slate-100/50">
+                                   <div className="flex items-center justify-start">
+                                    {statusInfo.status === 'OnTime' && <span className="px-2.5 py-1 rounded-[2px] text-[11px] font-black bg-green-100 text-green-700 border border-green-200 uppercase whitespace-nowrap">ON TIME</span>}
+                                    {statusInfo.status === 'Late' && <span className="px-2.5 py-1 rounded-[2px] text-[11px] font-black bg-amber-100 text-amber-700 border border-amber-200 uppercase whitespace-nowrap">LATE</span>}
+                                    {statusInfo.status === 'Present' && <span className="px-2.5 py-1 rounded-[2px] text-[11px] font-black bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase whitespace-nowrap">PRESENT</span>}
+                                    {statusInfo.status === 'Absent' && <span className="px-2.5 py-1 rounded-[2px] text-[11px] font-black bg-slate-50 text-slate-300 border border-slate-100 uppercase whitespace-nowrap">ABSENT</span>}
+                                    {statusInfo.status === 'Cut' && <span className="px-2.5 py-1 rounded-[2px] text-[11px] font-black bg-red-100 text-red-700 border border-red-200 uppercase whitespace-nowrap">CUT</span>}
+                                  </div>
+                               </TableCell>
+                               <TableCell className="w-[90px] py-0 px-1.5 text-center border-l border-slate-100/50">
+                                  {statusInfo.time && (
+                                     <div className="flex items-center justify-center gap-1 group/time h-7">
+                                        <span className="text-sm text-slate-400 font-mono font-bold leading-none whitespace-nowrap">{format(new Date(statusInfo.time), 'h:mm a')}</span>
+                                        <button onClick={() => statusInfo.scanId && openEditTime(statusInfo.scanId, statusInfo.time!)} className="opacity-0 group-hover/time:opacity-100 p-0.5 text-slate-300 hover:text-indigo-600 transition-opacity" title="Edit Time">
+                                           <Edit2 className="w-3 h-3" />
+                                        </button>
+                                     </div>
+                                  )}
+                               </TableCell>
+                               <TableCell className="w-[120px] py-0 px-1.5 text-left border-l border-slate-100/50">
+                                  <div className="flex items-center gap-1.5 overflow-hidden">
+                                     {statusInfo.leftEarly && <span className="px-1.5 py-0.5 rounded-[2px] text-[9px] font-black bg-blue-600 text-white shadow-sm uppercase whitespace-nowrap">Left Early</span>}
+                                     {statusInfo.excused && <span className="px-1.5 py-0.5 rounded-[2px] text-[9px] font-black bg-blue-600 text-white shadow-sm uppercase whitespace-nowrap">Pass</span>}
+                                     {statusInfo.noPass && <span className="px-1.5 py-0.5 rounded-[2px] text-[9px] font-black bg-red-600 text-white shadow-sm uppercase whitespace-nowrap">No Pass</span>}
                                   </div>
                                </TableCell>
                                <TableCell className="w-full"></TableCell>
