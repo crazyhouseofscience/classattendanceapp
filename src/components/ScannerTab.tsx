@@ -516,14 +516,13 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     const studentScans = scans.filter(s => s.studentId === student.id).sort((a,b) => a.timestamp - b.timestamp);
     const primaryScan = studentScans[0];
 
-    if (forceStatus === 'Absent' || forceStatus === 'Cut') {
+    if (forceStatus === 'Absent') {
        if (primaryScan) {
           await db.delete('scans', primaryScan.id);
        }
-       if (forceStatus === 'Absent') {
-          await loadData();
-          return;
-       }
+       await loadData();
+       toast.success(`${student.firstName} marked Absent`);
+       return;
     }
 
     if (primaryScan) {
@@ -554,9 +553,9 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
          movementType: 'Attendance'
        };
        await db.put('scans', scanEvent);
+       toast.success(`${student.firstName} marked ${forceStatus || 'Present'}${isExcused ? ' (Excused)' : ''}`);
     }
 
-    toast.success(`${student.firstName} marked ${forceStatus || 'Present'}${isExcused ? ' (Excused)' : ''}`);
     await loadData();
     triggerAutoBackup();
   };
@@ -999,6 +998,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                           <Button variant="outline" size="sm" onClick={() => manualMark(student, 'Present')} className="h-6 text-xs font-bold bg-green-50 text-green-700 px-3 border-green-200 uppercase">IN</Button>
                                           <Button variant="outline" size="sm" onClick={() => manualMark(student, 'Late')} className="h-6 text-xs font-bold bg-amber-50 text-amber-700 px-3 border-amber-200 uppercase">LATE</Button>
+                                          <Button variant="ghost" size="sm" onClick={() => { trackBehavior(student.id, { name: 'Cut Class', points: -2, type: 'Negative' }, 'Student cut class'); manualMark(student, 'Cut'); }} className="h-6 px-2 text-[10px] tracking-tight font-black uppercase text-slate-400 hover:bg-slate-100 transition-colors ml-1">CUT</Button>
                                        </div>
                                     ) : (
                                        <div className="flex items-center gap-2.5">
