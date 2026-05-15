@@ -62,6 +62,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const [scannerEnabled, setScannerEnabled] = useState(true);
   const [view, setView] = useState<'attendance' | 'movement'>('attendance');
   const [manualSearchOpen, setManualSearchOpen] = useState(false);
+  const [resolvingScanId, setResolvingScanId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
   const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status' | 'rank' | 'id' | 'time'>('lastName');
@@ -401,13 +402,14 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
     const unknownScans = filteredScans.filter(s => s.status === 'unknown_barcode');
     const uniqueUnknownIds = Array.from(new Set(unknownScans.map(s => s.studentId)));
-    const unknownStudents: Student[] = uniqueUnknownIds.map(id => ({
+    const unknownStudents: (Student & { isUnknown?: boolean })[] = uniqueUnknownIds.map(id => ({
       id,
       firstName: 'Unknown ID',
       lastName: `(${id})`,
       grade: '',
       email: '',
-      notes: ''
+      notes: '',
+      isUnknown: true
     }));
 
     // Update students state with unknown IDs as well
@@ -490,11 +492,9 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
     if (!student) {
       playSound('error');
-      setLastScan({ student: null, barcode: code, status: 'unknown_barcode', timestamp: Date.now() });
-      return;
+    } else {
+      playSound('success');
     }
-
-    playSound('success');
     
     const now = Date.now();
     const todayStr = viewDate;
@@ -955,20 +955,34 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                     {lastScan.status === 'success' ? 'MATCH' : 
                     lastScan.status === 'not_in_period' ? 'OUT OF PERIOD' : 'NOT FOUND'}
                   </p>
-                  {lastScan.status === 'unknown_barcode' && (
-                    <Button 
-                      variant="link" 
-                      size="sm" 
-                      className="h-auto p-0 text-[9px] font-black uppercase text-red-600 hover:text-red-800"
-                      onClick={() => setManualSearchOpen(true)}
-                    >
-                      Login Manually Instead
-                    </Button>
-                  )}
+                    {lastScan.status === 'unknown_barcode' && (
+                      <Button 
+                        variant="link" 
+                        size="sm" 
+                        className="h-auto p-0 text-[10px] font-black uppercase text-red-600 hover:text-red-800 underline flex items-center gap-1"
+                        onClick={() => {
+                          const scannerLogs = scans.filter(s => s.status === 'unknown_barcode');
+                          if (scannerLogs.length > 0) {
+                            setResolvingScanId(scannerLogs[0].id);
+                          }
+                          setManualSearchOpen(true);
+                        }}
+                      >
+                        <AlertTriangle size={10} />
+                        FIX THIS SCAN
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 ml-4 py-0.5">
+              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 ml-4 py-0.5">
+              {lastScan.status === 'unknown_barcode' && (
+                <div className="flex items-center gap-2">
+                   <p className="text-[10px] font-bold text-red-700 bg-red-100/50 px-2 py-0.5 rounded cursor-help" title="The scanner might have missed a digit. Click 'FIX THIS SCAN' to search for the student manually.">
+                     Scanner missed a digit?
+                   </p>
+                </div>
+              )}
               {lastScan.status !== 'unknown_barcode' && lastScan.student && (
                 <div className="flex items-center gap-1.5 animate-in fade-in zoom-in duration-300">
                   <div className="w-[1px] h-6 bg-slate-200 mx-1" />
@@ -1160,7 +1174,35 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                </TableCell>
                                <TableCell className="w-[240px] py-0 px-1.5 text-left">
                                   <div className="flex justify-start items-center gap-2">
-                                    {statusInfo.status === 'Absent' ? (
+                                    {(student as any).isUnknown ? (
+                                      <div className="flex gap-2">
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm" 
+                                          onClick={() => {
+                                            setResolvingScanId(statusInfo.scanId);
+                                            setManualSearchOpen(true);
+                                          }} 
+                                          className="h-6 text-[10px] font-black bg-indigo-600 text-white px-3 border-indigo-700 uppercase shadow-sm hover:bg-indigo-700"
+                                        >
+                                          FIX / ASSIGN STUDENT
+                                        </Button>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="sm" 
+                                          onClick={async () => {
+                                            if (statusInfo.scanId && window.confirm('Delete this failed scan?')) {
+                                              const db = await getDB();
+                                              await db.delete('scans', statusInfo.scanId);
+                                              loadData();
+                                            }
+                                          }} 
+                                          className="h-6 px-2 text-[10px] font-bold text-red-400 hover:text-red-600 uppercase"
+                                        >
+                                          Delete
+                                        </Button>
+                                      </div>
+                                    ) : statusInfo.status === 'Absent' ? (
                                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                           <Button variant="outline" size="sm" onClick={() => manualMark(student, 'Present')} className="h-6 text-xs font-bold bg-green-50 text-green-700 px-3 border-green-200 uppercase">IN</Button>
                                           <Button variant="outline" size="sm" onClick={() => manualMark(student, 'Late')} className="h-6 text-xs font-bold bg-amber-50 text-amber-700 px-3 border-amber-200 uppercase">LATE</Button>
@@ -1516,21 +1558,29 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
             </DialogContent>
          </Dialog>
 
-          <Dialog open={manualSearchOpen} onOpenChange={setManualSearchOpen}>
+          <Dialog open={manualSearchOpen} onOpenChange={(open) => {
+            setManualSearchOpen(open);
+            if (!open) {
+              setResolvingScanId(null);
+              setSearchQuery('');
+            }
+          }}>
             <DialogContent className="sm:max-w-md p-0 overflow-hidden">
-               <DialogHeader className="p-4 bg-indigo-600 text-white">
+               <DialogHeader className={`p-4 ${resolvingScanId ? 'bg-red-600' : 'bg-indigo-600'} text-white`}>
                   <DialogTitle className="flex items-center gap-2">
-                     <Plus className="w-5 h-5" />
-                     Manual Student Entry
+                     {resolvingScanId ? <AlertTriangle className="w-5 h-5" /> : <Plus className="w-5 h-5" />}
+                     {resolvingScanId ? 'Assign Student to Scan' : 'Manual Student Entry'}
                   </DialogTitle>
-                  <p className="text-indigo-100 text-[10px] font-bold uppercase tracking-wider">
-                     Use this if the scanner is not working for a student
+                  <p className="text-white/80 text-[10px] font-bold uppercase tracking-wider">
+                     {resolvingScanId 
+                      ? `Matching unknown ID: ${scans.find(s => s.id === resolvingScanId)?.studentId}` 
+                      : 'Use this if the scanner is not working for a student'}
                   </p>
                </DialogHeader>
                <div className="p-4 space-y-4">
                   <div className="relative">
                     <Input 
-                      placeholder="Search by name or ID..."
+                      placeholder="Search by student name..."
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                       className="pl-9 h-10 font-bold"
@@ -1542,6 +1592,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                   <div className="max-h-[300px] overflow-y-auto space-y-1 p-1">
                     {students
                       .filter(s => {
+                        if ((s as any).isUnknown) return false;
                         const q = searchQuery.toLowerCase();
                         return s.firstName.toLowerCase().includes(q) || 
                                s.lastName.toLowerCase().includes(q) || 
@@ -1553,15 +1604,30 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                           key={student.id}
                           variant="ghost"
                           className="w-full justify-start h-12 flex flex-col items-start gap-0.5 hover:bg-slate-50 border border-transparent hover:border-slate-200"
-                          onClick={() => {
-                            setBarcode(student.id);
-                            if (inputRef.current) inputRef.current.value = student.id;
-                            setManualSearchOpen(false);
-                            setSearchQuery('');
-                            setTimeout(() => {
-                              const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
-                              handleScan(fakeEvent);
-                            }, 50);
+                          onClick={async () => {
+                            if (resolvingScanId) {
+                               const db = await getDB();
+                               const scan = await db.get('scans', resolvingScanId);
+                               if (scan) {
+                                  scan.studentId = student.id;
+                                  scan.status = 'success';
+                                  await db.put('scans', scan);
+                                  toast.success(`Successfully assigned to ${student.firstName} ${student.lastName}`);
+                               }
+                               setResolvingScanId(null);
+                               setManualSearchOpen(false);
+                               setSearchQuery('');
+                               await loadData();
+                            } else {
+                              setBarcode(student.id);
+                              if (inputRef.current) inputRef.current.value = student.id;
+                              setManualSearchOpen(false);
+                              setSearchQuery('');
+                              setTimeout(() => {
+                                const fakeEvent = { preventDefault: () => {} } as React.FormEvent;
+                                handleScan(fakeEvent);
+                              }, 50);
+                            }
                           }}
                         >
                           <div className="flex items-center gap-2">
