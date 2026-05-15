@@ -470,16 +470,11 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
     // Fast clear the UI state and the actual input element
     setBarcode('');
-    if (inputRef.current) inputRef.current.value = '';
-    setManualSearchOpen(false);
-
-    // Validation: Student IDs are strictly 6 digits
-    if (code.length !== 6) {
-      playSound('error');
-      toast.error(`Invalid ID length: ${code.length} digits. Please scan again. (Expected 6)`);
-      setLastScan({ student: null, barcode: code, status: 'unknown_barcode', timestamp: Date.now() });
-      return;
+    if (inputRef.current) {
+      inputRef.current.value = '';
+      inputRef.current.focus(); // Always keep focus here
     }
+    setManualSearchOpen(false);
 
     const purpose = scanReason;
     setScanReason(null);
@@ -489,8 +484,9 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
     const db = await getDB();
     const student = await db.get('students', code);
+    const isInvalidLength = code.length !== 6;
 
-    if (!student) {
+    if (!student || isInvalidLength) {
       playSound('error');
     } else {
       playSound('success');
@@ -498,6 +494,15 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     
     const now = Date.now();
     const todayStr = viewDate;
+    
+    // Status Determination
+    let status: 'success' | 'unknown_barcode' | 'not_in_period' = 'success';
+    if (!student || isInvalidLength) {
+       status = 'unknown_barcode';
+    } else if (student.periods && student.periods.length > 0 && activePeriodName && activePeriodName !== 'all' && !isStudentInPeriod(student, activePeriodName)) {
+       status = 'not_in_period';
+    }
+    
     const todayScans = await db.transaction('scans').store.index('by-date').getAll(todayStr);
     const studentScans = todayScans.filter(s => s.studentId === code && s.periodName === effectivePeriodName);
     studentScans.sort((a, b) => a.timestamp - b.timestamp);
@@ -511,7 +516,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
         if (['Bathroom', 'Water', 'Nurse', 'Office', 'Guidance'].includes(lastScanType)) {
             movementType = 'Returned';
         } else {
-            movementType = 'Attendance'; // duplicate attendance scan
+            movementType = 'Attendance'; 
         }
     }
 
@@ -521,7 +526,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
     // Attendance calculation logic - only for Attendance scans
     const effectiveStartTime = manualStartTime || currentPeriodConfig?.startTime;
-    if (isAttendanceScan && effectiveStartTime) {
+    if (isAttendanceScan && effectiveStartTime && status === 'success') {
          const parseTime = (timeStr: string) => {
               let [h, m] = timeStr.split(':');
               let hours = parseInt(h, 10);
@@ -531,7 +536,6 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
               if (upper.includes('PM') && hours < 12) hours += 12;
               if (upper.includes('AM') && hours === 12) hours = 0;
               
-              // Heuristic: If no AM/PM and it's an afternoon period (e.g. 6-9), assume PM
               if (!upper.includes('AM') && !upper.includes('PM') && hours < 12 && hours > 0) {
                  const periodName = currentPeriodConfig?.name || '';
                  if (periodName.match(/Period\s*[6-9]/i)) {
@@ -548,14 +552,6 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
          if (scanMinutes > cutoffMinutes) {
              manualStatus = 'Late';
          }
-    }
-
-    let status: 'success' | 'unknown_barcode' | 'not_in_period' = 'success';
-    
-    if (!student) {
-       status = 'unknown_barcode';
-    } else if (student.periods && student.periods.length > 0 && activePeriodName && activePeriodName !== 'all' && !isStudentInPeriod(student, activePeriodName)) {
-       status = 'not_in_period';
     }
     
     const scanEvent: ScanEvent = {
@@ -581,11 +577,15 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     }
 
     if (status === 'success') {
-      toast.success(`Scanned: ${student!.firstName} ${student!.lastName}${purpose ? ` (${purpose})` : ''}`);
+      toast.success(`Scanned: ${student!.firstName} ${student!.lastName}${purpose ? ` (${purpose})` : ''}`, { duration: 1500 });
     } else if (status === 'not_in_period') {
-       toast.warning(`${student!.firstName} ${student!.lastName} is not in roster`);
+       toast.warning(`${student!.firstName} ${student!.lastName} is not in roster`, { duration: 2000 });
     } else {
-       toast.warning(`Unknown student scanned: ${code}`);
+       if (isInvalidLength) {
+         toast.error(`Invalid Scan: ${code.length} digits. Recorded for manual fix.`, { duration: 3000 });
+       } else {
+         toast.warning(`Unknown student scanned: ${code}`, { duration: 3000 });
+       }
     }
   };
 
