@@ -463,17 +463,13 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const handleScan = async (e: React.FormEvent) => {
     e.preventDefault();
     // Get value directly from ref for maximum speed/reliability with hardware scanners
-    const rawCode = inputRef.current?.value || barcode;
+    const rawCode = inputRef.current?.value || '';
     const code = rawCode.trim();
-    
     if (!code) return;
 
-    // Fast clear the UI state and the actual input element
+    // IMMEDIATE DOM CLEARANCE (Crucial for hardware scanners to not skip digits)
+    if (inputRef.current) inputRef.current.value = '';
     setBarcode('');
-    if (inputRef.current) {
-      inputRef.current.value = '';
-      inputRef.current.focus(); // Always keep focus here
-    }
     setManualSearchOpen(false);
 
     const purpose = scanReason;
@@ -486,15 +482,6 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     const student = await db.get('students', code);
     const isInvalidLength = code.length !== 6;
 
-    if (!student || isInvalidLength) {
-      playSound('error');
-    } else {
-      playSound('success');
-    }
-    
-    const now = Date.now();
-    const todayStr = viewDate;
-    
     // Status Determination
     let status: 'success' | 'unknown_barcode' | 'not_in_period' = 'success';
     if (!student || isInvalidLength) {
@@ -502,6 +489,15 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     } else if (student.periods && student.periods.length > 0 && activePeriodName && activePeriodName !== 'all' && !isStudentInPeriod(student, activePeriodName)) {
        status = 'not_in_period';
     }
+
+    if (status === 'unknown_barcode') {
+      playSound('error');
+    } else {
+      playSound('success');
+    }
+    
+    const now = Date.now();
+    const todayStr = viewDate;
     
     const todayScans = await db.transaction('scans').store.index('by-date').getAll(todayStr);
     const studentScans = todayScans.filter(s => s.studentId === code && s.periodName === effectivePeriodName);
@@ -869,13 +865,12 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                 type="text" 
                 inputMode="numeric"
                 pattern="[0-9]*"
-                maxLength={6}
                 autoComplete="off"
                 autoCorrect="off"
                 spellCheck={false}
                 className={`flex-1 text-2xl px-3 focus:outline-none font-mono font-black tracking-widest transition-all bg-transparent min-w-0 ${isReady ? 'text-green-950 placeholder:text-green-300' : 'text-red-950 placeholder:text-red-300'}`}
                 autoFocus
-                value={barcode}
+                defaultValue={barcode}
                 onChange={e => setBarcode(e.target.value)}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
