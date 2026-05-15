@@ -469,6 +469,13 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     if (inputRef.current) {
       inputRef.current.value = '';
       inputRef.current.focus(); 
+      // Force a slight delay to ensure the browser has cleared it before the hardware scanner sends more
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.value = '';
+          inputRef.current.focus();
+        }
+      }, 0);
     }
     setBarcode('');
     setManualSearchOpen(false);
@@ -873,7 +880,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                 spellCheck={false}
                 className={`flex-1 text-2xl px-3 focus:outline-none font-mono font-black tracking-widest transition-all bg-transparent min-w-0 ${isReady ? 'text-green-950 placeholder:text-green-300' : 'text-red-950 placeholder:text-red-300'}`}
                 autoFocus
-                value={barcode}
+                defaultValue=""
                 onChange={e => setBarcode(e.target.value)}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
