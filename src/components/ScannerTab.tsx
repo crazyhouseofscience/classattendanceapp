@@ -50,10 +50,6 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const [gracePeriod, setGracePeriodState] = useState(5);
   const [scanReason, setScanReason] = useState<string | null>(null);
   const [viewDate, setViewDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
-  const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState<'table' | 'grid'>('table');
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [recentScans, setRecentScans] = useState<(ScanEvent & { studentInfo?: Student })[]>([]);
 
   const [editingScanId, setEditingScanId] = useState<string | null>(null);
   const [editingTimeStr, setEditingTimeStr] = useState<string>('');
@@ -67,7 +63,6 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const [view, setView] = useState<'attendance' | 'movement'>('attendance');
 
   const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status' | 'rank' | 'id' | 'time'>('lastName');
-  const [behaviorsHistory, setBehaviorsHistory] = useState<BehaviorEvent[]>([]);
   const [markArrivalTime, setMarkArrivalTime] = useState(format(new Date(), 'HH:mm'));
   const [elapsedTime, setElapsedTime] = useState<string>('00:00');
   const [manualStartTimeInternal, setManualStartTimeInternal] = useState<string | null>(null);
@@ -371,19 +366,11 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     const db = await getDB();
     const today = viewDate;
     
-    let allStudents = await db.getAll('students');
-    let periodRoster = (activePeriodName !== 'all')
+    const allStudents = await db.getAll('students');
+    const periodRoster = (activePeriodName !== 'all')
       ? allStudents.filter(s => isStudentInPeriod(s, activePeriodName))
       : allStudents;
       
-    if (searchQuery) {
-       const q = searchQuery.toLowerCase();
-       periodRoster = periodRoster.filter(s => 
-          `${s.firstName} ${s.lastName}`.toLowerCase().includes(q) || 
-          s.id.toLowerCase().includes(q)
-       );
-    }
-
     periodRoster.sort((a,b) => a.firstName.localeCompare(b.firstName) || a.lastName.localeCompare(b.lastName));
     setStudents(periodRoster);
 
@@ -409,14 +396,6 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
         
     filteredScans.sort((a,b) => b.timestamp - a.timestamp);
     setScans(filteredScans);
-    setRecentScans(filteredScans.slice(0, 10));
-
-    // Get today's behaviors for the sidebar display
-    const behaviorsIndex = db.transaction('behaviors').store.index('by-date');
-    const todayBehaviors = await behaviorsIndex.getAll(today);
-    setBehaviorsHistory((activePeriodName && activePeriodName !== 'all') 
-       ? todayBehaviors.filter(b => b.periodName === activePeriodName)
-       : todayBehaviors);
 
     const unknownScans = filteredScans.filter(s => s.status === 'unknown_barcode');
     const uniqueUnknownIds = Array.from(new Set(unknownScans.map(s => s.studentId)));
@@ -435,7 +414,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
   useEffect(() => {
     loadData();
-  }, [activePeriodName, activeScheduleId, viewDate, searchQuery]);
+  }, [activePeriodName, activeScheduleId, viewDate]);
 
   // Keep focus on input for hand scanner, but only if no other input is active
   useEffect(() => {
@@ -722,9 +701,8 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   };
 
   return (
-    <div className="flex h-[calc(100vh-7rem)] overflow-hidden bg-slate-50 relative group/tab">
-      <div className="flex-1 flex flex-col min-w-0 p-4 pt-0 overflow-hidden">
-        {!windowFocused && scannerEnabled && (
+    <div className="flex flex-col h-[calc(100vh-7rem)] relative">
+      {!windowFocused && scannerEnabled && (
           <div className="fixed inset-0 z-50 bg-red-600/90 flex items-center justify-center pointer-events-none p-10 animate-pulse">
               <div className="bg-white p-10 rounded-2xl shadow-2xl text-center border-4 border-red-700">
                   <h1 className="text-6xl font-black text-red-600 mb-4">SCANNER NOT FOCUSED</h1>
@@ -937,118 +915,96 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
       <div className="flex-1 overflow-hidden flex flex-col gap-2">
         
         {/* Navigation Tabs & Sorting Options */}
-          <div className="flex items-center justify-between gap-2">
-             <div className="flex items-center gap-2">
-                <div className="flex gap-1 p-0.5 bg-slate-200/50 rounded-md">
-                    <Button 
-                        variant={view === 'attendance' ? 'default' : 'ghost'} 
-                        size="sm" 
-                        onClick={() => setView('attendance')}
-                        className={`h-7 px-4 text-[10px] font-bold uppercase ${view === 'attendance' ? 'bg-indigo-600 shadow-sm' : 'text-slate-500'}`}
-                    >
-                        Attendance
-                    </Button>
-                    <Button 
-                        variant={view === 'movement' ? 'default' : 'ghost'} 
-                        size="sm" 
-                        onClick={() => setView('movement')}
-                        className={`h-7 px-4 text-[10px] font-bold uppercase relative ${view === 'movement' ? 'bg-indigo-600 shadow-sm' : 'text-slate-500'}`}
-                    >
-                        Movement
-                        {logEntries.some(l => ['Bathroom', 'Water', 'Nurse', 'Office', 'Guidance'].includes(l.notes || '')) && (
-                            <span className="absolute -top-1 -right-0.5 flex h-2 w-2">
-                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
-                                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
-                            </span>
-                        )}
-                    </Button>
-                </div>
+        <div className="flex items-center justify-between gap-2">
+           <div className="flex gap-1 p-0.5 bg-slate-100 rounded-md">
+              <Button 
+                 variant={view === 'attendance' ? 'default' : 'ghost'} 
+                 size="sm" 
+                 onClick={() => setView('attendance')}
+                 className={`h-7 px-4 text-[10px] font-bold uppercase ${view === 'attendance' ? 'bg-indigo-600 shadow-sm' : 'text-slate-500'}`}
+              >
+                 Attendance
+              </Button>
+              <Button 
+                 variant={view === 'movement' ? 'default' : 'ghost'} 
+                 size="sm" 
+                 onClick={() => setView('movement')}
+                 className={`h-7 px-4 text-[10px] font-bold uppercase relative ${view === 'movement' ? 'bg-indigo-600 shadow-sm' : 'text-slate-500'}`}
+              >
+                 Movement
+                 {logEntries.some(l => ['Bathroom', 'Water', 'Nurse', 'Office', 'Guidance'].includes(l.notes || '')) && (
+                    <span className="absolute -top-1 -right-0.5 flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+                    </span>
+                 )}
+              </Button>
+           </div>
 
-                <div className="h-6 w-px bg-slate-200 mx-1" />
-
-                {view === 'attendance' && (
-                    <div className="flex gap-1 p-0.5 bg-slate-200/50 rounded-md">
-                        <Button 
-                            variant={viewMode === 'table' ? 'default' : 'ghost'} 
-                            size="sm" 
-                            onClick={() => setViewMode('table')}
-                            className={`h-7 px-3 text-[10px] font-bold uppercase ${viewMode === 'table' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-                        >
-                            Table
-                        </Button>
-                        <Button 
-                            variant={viewMode === 'grid' ? 'default' : 'ghost'} 
-                            size="sm" 
-                            onClick={() => setViewMode('grid')}
-                            className={`h-7 px-3 text-[10px] font-bold uppercase ${viewMode === 'grid' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}
-                        >
-                            Grid
-                        </Button>
-                    </div>
-                )}
-             </div>
-
-             <div className="flex items-center gap-2">
-                {view === 'attendance' && (
-                   <div className="relative">
-                      <Input 
-                         placeholder="Search Student..."
-                         value={searchQuery}
-                         onChange={(e) => setSearchQuery(e.target.value)}
-                         className="h-8 w-48 text-[10px] font-bold uppercase pl-8 bg-white border-slate-200"
-                      />
-                      <Star className="absolute left-2 top-2 text-slate-300 w-3.5 h-3.5" />
-                   </div>
-                )}
-                
-                {view === 'attendance' && (
-                   <div className="flex items-center gap-1.5 p-0.5 bg-slate-200/50 rounded-md">
-                      <span className="text-[8px] font-black text-slate-400 uppercase ml-2 mr-1">Sort:</span>
-                      {['status', 'firstName', 'lastName', 'rank', 'time'].map((s: any) => (
-                         <Button 
-                            key={s}
-                            variant={sortBy === s ? 'secondary' : 'ghost'} 
-                            size="sm" 
-                            onClick={() => setSortBy(s)}
-                            className={`h-6 px-2 text-[9px] font-bold uppercase ${sortBy === s ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
-                         >
-                            {s === 'firstName' ? 'First' : s === 'lastName' ? 'Last' : s === 'status' ? 'Status' : s === 'rank' ? 'Rank' : 'Arrival'}
-                         </Button>
-                      ))}
-                   </div>
-                )}
-
-                <Button 
-                   variant="ghost" 
-                   size="sm" 
-                   onClick={() => setSidebarOpen(!sidebarOpen)}
-                   className={`h-8 px-2 text-[10px] font-black uppercase ${sidebarOpen ? 'text-indigo-600 bg-indigo-50' : 'text-slate-400'}`}
-                >
-                   {sidebarOpen ? 'Hide Activities' : 'Show Activities'}
-                </Button>
-             </div>
-          </div>
+           {view === 'attendance' && (
+              <div className="flex items-center gap-1.5 p-0.5 bg-slate-100 rounded-md">
+                 <span className="text-[8px] font-black text-slate-400 uppercase ml-2 mr-1">Sort Mode:</span>
+                 <Button 
+                    variant={sortBy === 'status' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setSortBy('status')}
+                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'status' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                 >
+                    Status
+                 </Button>
+                 <Button 
+                    variant={sortBy === 'firstName' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setSortBy('firstName')}
+                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'firstName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                 >
+                    First
+                 </Button>
+                 <Button 
+                    variant={sortBy === 'lastName' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setSortBy('lastName')}
+                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'lastName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                 >
+                    Last
+                 </Button>
+                 <Button 
+                    variant={sortBy === 'rank' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setSortBy('rank')}
+                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'rank' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                 >
+                    Rank
+                 </Button>
+                 <Button 
+                    variant={sortBy === 'time' ? 'secondary' : 'ghost'} 
+                    size="sm" 
+                    onClick={() => setSortBy('time')}
+                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'time' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                 >
+                    Arrival
+                 </Button>
+              </div>
+           )}
+        </div>
 
         {view === 'attendance' ? (
-           <div className="flex-1 flex flex-col min-h-0">
-             {viewMode === 'table' ? (
-                <div className="flex-1 flex flex-col border rounded-lg bg-white shadow-sm overflow-hidden min-h-0">
-                   <div className="bg-slate-50 px-3 py-1 border-b flex justify-between items-center shrink-0">
-                      <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Attendance Roster</h3>
-                      <span className="text-[9px] text-slate-400 font-bold">{students.length} Students</span>
-                   </div>
-                   <div className="flex-1 overflow-auto min-w-0">
-                      <div className="flex justify-end p-2 gap-2">
-                         <Input 
-                            type="time"
-                            value={markArrivalTime}
-                            onChange={(e) => setMarkArrivalTime(e.target.value)}
-                            className="w-24 h-5 text-[9px]"
-                         />
-                         <Button variant="outline" size="sm" onClick={markAllArrived} className="h-5 text-[9px] font-black uppercase px-2 py-0 border-indigo-200 text-indigo-700 hover:bg-indigo-50">Mark Arrival Now</Button>
-                      </div>
-                      <Table className="min-w-[600px]">
-                         {/* ... rest of table ... */}
+           <div className="flex-1 flex flex-col border rounded-lg bg-white shadow-sm overflow-hidden min-h-0">
+             <div className="bg-slate-50 px-3 py-1 border-b flex justify-between items-center shrink-0">
+                <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Attendance Roster</h3>
+                <span className="text-[9px] text-slate-400 font-bold">{students.length} Students</span>
+             </div>
+             <div className="flex-1 overflow-auto min-w-0">
+               <div className="flex justify-end p-2 gap-2">
+                <Input 
+                    type="time"
+                    value={markArrivalTime}
+                    onChange={(e) => setMarkArrivalTime(e.target.value)}
+                    className="w-24 h-5 text-[9px]"
+                />
+                <Button variant="outline" size="sm" onClick={markAllArrived} className="h-5 text-[9px] font-black uppercase px-2 py-0 border-indigo-200 text-indigo-700 hover:bg-indigo-50">Mark Arrival Now</Button>
+             </div>
+             <Table className="min-w-[600px]">
                  <TableHeader className="bg-slate-50/90 sticky top-0 z-20 backdrop-blur-sm shadow-sm">
                    <TableRow className="h-6 border-b-2 bg-slate-50">
                      <TableHead className="w-[150px] text-[10px] font-black uppercase py-0 px-2 h-6">Student Name</TableHead>
@@ -1239,26 +1195,8 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                  </TableBody>
                </Table>
              </div>
-          </div>
-        ) : (
-           <div className="flex-1 overflow-y-auto p-4 bg-slate-50/50 rounded-xl border border-slate-200/60 shadow-inner">
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
-                 {sortedStudents.map(student => (
-                   <CompactStudentCard 
-                      key={student.id}
-                      student={student}
-                      behaviors={behaviors}
-                      statusInfo={getStudentStatus(student)}
-                      moveStatus={getMovementStatus(student.id)}
-                      onStatusClick={(status: any) => manualMark(student, status)}
-                      onTrackBehavior={(b: any) => trackBehavior(student.id, b)}
-                   />
-                 ))}
-              </div>
            </div>
-        )}
-      </div>
-    ) : (
+        ) : (
            <div className="flex-1 flex flex-row gap-4 overflow-hidden min-h-0">
               {/* Column 1: ROSTER */}
               <div className="w-[30%] flex flex-col border rounded-xl bg-white shadow-sm overflow-hidden min-h-0">
@@ -1479,161 +1417,5 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
       </div>
     </div>
-
-      {/* Right Side Sidebar - Activity & Quick Select */}
-      {sidebarOpen && (
-        <aside className="w-80 bg-white border-l border-slate-200 flex flex-col shrink-0 animate-in slide-in-from-right-1 duration-300">
-           <div className="p-4 border-b bg-slate-50/50">
-              <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                 <Clock size={14} className="text-indigo-500" />
-                 Recent Activities
-              </h3>
-           </div>
-           
-           <div className="flex-1 overflow-y-auto p-3 space-y-6">
-              {/* Recent Scans */}
-              <section>
-                 <div className="flex items-center justify-between mb-2 px-1">
-                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Arrivals / Scans</h4>
-                    <span className="text-[9px] font-bold text-slate-400">{recentScans.length}</span>
-                 </div>
-                 <div className="space-y-1.5">
-                    {recentScans.length === 0 ? (
-                       <p className="text-[10px] text-slate-400 italic text-center py-4">No scans yet today</p>
-                    ) : (
-                       recentScans.map(scan => (
-                          <div key={scan.id} className="p-2 rounded-lg bg-slate-50 border border-slate-100 flex items-center justify-between group">
-                             <div className="min-w-0 pr-2">
-                                <div className="text-[11px] font-black text-slate-700 truncate">
-                                   {scan.studentInfo ? `${scan.studentInfo.firstName} ${scan.studentInfo.lastName}` : scan.studentId}
-                                </div>
-                                <div className="text-[8px] font-bold text-slate-400 uppercase">
-                                   {format(new Date(scan.timestamp), 'h:mm:ss a')} • {scan.movementType || 'Scan'}
-                                </div>
-                             </div>
-                          </div>
-                       ))
-                    )}
-                 </div>
-              </section>
-
-              {/* Recent Behaviors */}
-              <section>
-                 <div className="flex items-center justify-between mb-2 px-1">
-                    <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-wider">Recent Behaviors</h4>
-                 </div>
-                 <div className="space-y-1.5">
-                    {behaviorsHistory.length === 0 ? (
-                       <p className="text-[10px] text-slate-400 italic text-center py-4">Nothing logged yet</p>
-                    ) : (
-                       behaviorsHistory.sort((a,b) => b.timestamp - a.timestamp).slice(0, 8).map(event => {
-                          const student = students.find(s => s.id === event.studentId);
-                          const iconColor = event.type === 'Positive' ? 'text-green-500' : event.type === 'Negative' ? 'text-red-500' : 'text-slate-400';
-                          return (
-                             <div key={event.id} className="p-2 rounded-lg bg-white border border-slate-100 flex flex-col gap-1">
-                                <div className="flex justify-between items-center">
-                                   <span className="text-[10px] font-bold text-slate-800 truncate pr-2">{student ? student.firstName : 'Unknown'}</span>
-                                   <span className={`text-[10px] font-black ${iconColor}`}>
-                                      {event.points > 0 ? `+${event.points}` : event.points}
-                                   </span>
-                                </div>
-                                <div className="flex justify-between items-center">
-                                   <span className="text-[9px] font-black uppercase text-slate-400">{event.category}</span>
-                                   <span className="text-[8px] font-mono text-slate-300">{format(new Date(event.timestamp), 'h:mm a')}</span>
-                                </div>
-                             </div>
-                          );
-                       })
-                    )}
-                 </div>
-              </section>
-           </div>
-        </aside>
-      )}
-    </div>
-  );
-}
-
-function CompactStudentCard({ student, behaviors, statusInfo, moveStatus, onStatusClick, onTrackBehavior }: any) {
-  const isAbsent = statusInfo.status === 'Absent' || statusInfo.status === 'Cut';
-  const isLate = statusInfo.status === 'Late';
-  const isPresent = statusInfo.status === 'Present' || statusInfo.status === 'OnTime';
-
-  const onTrackSafe = (name: string) => {
-    const b = behaviors.find((x: any) => x.name === name);
-    if (b) onTrackBehavior(b);
-  };
-
-  return (
-     <Card className={`overflow-hidden border transition-all duration-200 group ${isAbsent ? 'bg-red-50/30 border-red-100 opacity-60' : isLate ? 'bg-amber-50/30 border-amber-100' : isPresent ? 'bg-green-50/30 border-green-100' : 'bg-white border-slate-200'}`}>
-        <CardContent className="p-2.5">
-           <div className="flex justify-between items-start mb-2">
-              <div className="min-w-0 pr-2">
-                 <h4 className={`text-xs font-black truncate ${isAbsent ? 'text-red-800' : 'text-slate-800'}`}>
-                    {student.firstName} {student.lastName}
-                 </h4>
-                 <p className="text-[9px] font-mono text-slate-400 leading-none mt-0.5">{student.id}</p>
-              </div>
-              <div className="flex flex-col items-end gap-1">
-                 {statusInfo.status !== 'Absent' ? (
-                    <div className="px-1.5 py-0.5 rounded text-[8px] font-black bg-white border shadow-xs uppercase">
-                       {statusInfo.status}
-                    </div>
-                 ) : (
-                    <div className="px-1.5 py-0.5 rounded text-[8px] font-black bg-red-100 text-red-600 border border-red-200 uppercase">
-                       ABSENT
-                    </div>
-                 )}
-              </div>
-           </div>
-
-           <div className="flex gap-1.5 mb-2">
-              {isAbsent ? (
-                 <>
-                    <Button variant="outline" size="sm" onClick={() => onStatusClick('Present')} className="flex-1 h-6 text-[9px] font-black bg-green-50 text-green-700 border-green-200 uppercase">IN</Button>
-                    <Button variant="outline" size="sm" onClick={() => onStatusClick('Late')} className="flex-1 h-6 text-[9px] font-black bg-amber-50 text-amber-700 border-amber-200 uppercase">LATE</Button>
-                 </>
-              ) : (
-                 <div className="flex-1 flex gap-1 items-center overflow-x-auto no-scrollbar">
-                    <Button 
-                       variant="ghost" 
-                       size="sm" 
-                       onClick={() => onTrackSafe('On Task')} 
-                       className="h-6 w-6 p-0 text-green-600 bg-green-100 hover:bg-green-200 rounded-full"
-                    >
-                       <Smile size={12} />
-                    </Button>
-                    <Button 
-                       variant="ghost" 
-                       size="sm" 
-                       onClick={() => onTrackSafe('Off Task')} 
-                       className="h-6 w-6 p-0 text-red-600 bg-red-100 hover:bg-red-200 rounded-full"
-                    >
-                       <Frown size={12} />
-                    </Button>
-                    <Button 
-                       variant="ghost" 
-                       size="sm" 
-                       onClick={() => onTrackSafe('Great Answer')} 
-                       className="h-6 w-6 p-0 text-amber-600 bg-amber-100 hover:bg-amber-200 rounded-full"
-                    >
-                       <Star size={12} />
-                    </Button>
-                    <div className="flex-1" />
-                    <button onClick={() => onStatusClick('Absent')} className="h-6 w-6 flex items-center justify-center rounded-full text-red-400 hover:bg-red-50">
-                       <XCircle size={14} />
-                    </button>
-                 </div>
-              )}
-           </div>
-
-           {moveStatus?.out && (
-              <div className="mt-1 px-2 py-1 rounded bg-amber-100 text-amber-700 text-[9px] font-black uppercase text-center flex items-center justify-center gap-1">
-                 <Clock size={10} />
-                 {moveStatus.reason} ({format(new Date(moveStatus.time), 'h:mm')})
-              </div>
-           )}
-        </CardContent>
-     </Card>
   );
 }
