@@ -16,7 +16,8 @@ import {
   DropdownMenuItem, 
   DropdownMenuTrigger,
   DropdownMenuLabel,
-  DropdownMenuSeparator
+  DropdownMenuSeparator,
+  DropdownMenuGroup
 } from './ui/dropdown-menu';
 
 interface ScannerTabProps {
@@ -866,6 +867,45 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                 </p>
               </div>
             </div>
+            <div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 ml-4 py-0.5">
+              {lastScan.status !== 'unknown_barcode' && lastScan.student && (
+                <div className="flex items-center gap-1.5 animate-in fade-in zoom-in duration-300">
+                  <div className="w-[1px] h-6 bg-slate-200 mx-1" />
+                  {[
+                    { name: 'On Task', icon: Smile, color: 'text-green-600 bg-green-100 hover:bg-green-200 border-green-200' },
+                    { name: 'Great Answer', icon: Star, color: 'text-amber-600 bg-amber-100 hover:bg-amber-200 border-amber-200' },
+                    { name: 'Off Task', icon: Frown, color: 'text-red-600 bg-red-100 hover:bg-red-200 border-red-200' },
+                  ].map(btn => {
+                    const b = behaviors.find(x => x.name === btn.name);
+                    if (!b) return null;
+                    return (
+                      <Button 
+                        key={b.id}
+                        size="sm"
+                        variant="ghost"
+                        className={`h-7 px-2 text-[9px] font-black uppercase border shadow-sm transition-all hover:scale-105 active:scale-95 ${btn.color}`}
+                        onClick={async () => {
+                          await trackBehavior(lastScan.student!.id, b);
+                          toast.success(`Logged ${b.name} for ${lastScan.student!.firstName}`);
+                        }}
+                      >
+                        <btn.icon size={12} className="mr-1" />
+                        {b.name}
+                      </Button>
+                    );
+                  })}
+                  <Button 
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 px-2 text-[9px] font-black uppercase text-indigo-600 bg-indigo-50 border border-indigo-200 shadow-sm hover:bg-indigo-100 transition-all hover:scale-105 active:scale-95"
+                    onClick={() => setNoteStudent(lastScan.student)}
+                  >
+                    <MessageSquare size={12} className="mr-1" />
+                    Note
+                  </Button>
+                </div>
+              )}
+            </div>
             <span className="text-[10px] font-mono opacity-50 tabular-nums shrink-0">{format(new Date(lastScan.timestamp), 'h:mm:ss a')}</span>
           </div>
         )}
@@ -1049,81 +1089,83 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                     {statusInfo.status === 'Cut' && <span className="px-2.5 py-1 rounded-[2px] text-[11px] font-black bg-red-100 text-red-700 border border-red-200 uppercase whitespace-nowrap">CUT</span>}
                                     
                                     <DropdownMenu>
-                                       <DropdownMenuTrigger render={
-                                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-300 hover:text-amber-500 hover:bg-amber-50 rounded-full transition-all opacity-0 group-hover:opacity-100">
+                                       <DropdownMenuTrigger render={(props) => (
+                                          <Button {...props} variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-300 hover:text-amber-500 hover:bg-amber-50 rounded-full transition-all opacity-0 group-hover:opacity-100">
                                              <Star size={14} fill={statusInfo.status === 'Absent' ? 'none' : 'currentColor'} className={statusInfo.status === 'Absent' ? 'opacity-30' : ''} />
                                           </Button>
-                                       } />
+                                       )} />
                                        <DropdownMenuContent align="end" className="w-56 font-sans">
-                                          <DropdownMenuLabel className="flex items-center gap-2 text-xs font-black uppercase text-slate-400">
-                                             <Star size={12} fill="currentColor" className="text-amber-500" />
-                                             Quick Behavior: {student.firstName}
-                                          </DropdownMenuLabel>
-                                          <DropdownMenuSeparator />
-                                          <div className="p-1 space-y-1">
-                                             {behaviors.filter(b => b.type === 'Positive').length > 0 && (
-                                                <>
-                                                   <div className="grid grid-cols-1 gap-0.5">
-                                                      {behaviors.filter(b => b.type === 'Positive').map(b => (
-                                                         <DropdownMenuItem 
-                                                            key={b.id} 
-                                                            className="flex items-center justify-between text-[11px] font-bold cursor-pointer hover:bg-green-50 text-green-700 p-1.5 focus:text-green-800 focus:bg-green-50"
-                                                            onClick={async () => { await trackBehavior(student.id, b); toast.success(`Logged ${b.name} for ${student.firstName}`); }}
-                                                         >
-                                                            <div className="flex items-center gap-2">
-                                                               <Smile size={14} />
-                                                               {b.name}
-                                                            </div>
-                                                            <span className="bg-green-100 px-1 rounded">+{b.points}</span>
-                                                         </DropdownMenuItem>
-                                                      ))}
-                                                   </div>
-                                                   <DropdownMenuSeparator />
-                                                </>
-                                             )}
-                                             {behaviors.filter(b => b.type === 'Negative').length > 0 && (
-                                                <>
-                                                   <div className="grid grid-cols-1 gap-0.5">
-                                                      {behaviors.filter(b => b.type === 'Negative').map(b => (
-                                                         <DropdownMenuItem 
-                                                            key={b.id} 
-                                                            className="flex items-center justify-between text-[11px] font-bold cursor-pointer hover:bg-red-50 text-red-700 p-1.5 focus:text-red-800 focus:bg-red-50"
-                                                            onClick={async () => { await trackBehavior(student.id, b); toast.success(`Logged ${b.name} for ${student.firstName}`); }}
-                                                         >
-                                                            <div className="flex items-center gap-2">
-                                                               <Frown size={14} />
-                                                               {b.name}
-                                                            </div>
-                                                            <span className="bg-red-100 px-1 rounded">{b.points}</span>
-                                                         </DropdownMenuItem>
-                                                      ))}
-                                                   </div>
-                                                   <DropdownMenuSeparator />
-                                                </>
-                                             )}
-                                             <div className="grid grid-cols-1 gap-0.5">
-                                                {behaviors.filter(b => b.type === 'Neutral' && b.name !== 'Note').map(b => (
-                                                   <DropdownMenuItem 
-                                                      key={b.id} 
-                                                      className="flex items-center justify-between text-[11px] font-bold cursor-pointer hover:bg-slate-50 text-slate-700 p-1.5 focus:text-slate-800 focus:bg-slate-50"
-                                                      onClick={async () => { await trackBehavior(student.id, b); toast.success(`Logged ${b.name} for ${student.firstName}`); }}
-                                                   >
-                                                      <div className="flex items-center gap-2">
-                                                         <Clock size={14} />
-                                                         {b.name}
+                                          <DropdownMenuGroup>
+                                             <DropdownMenuLabel className="flex items-center gap-2 text-xs font-black uppercase text-slate-400">
+                                                <Star size={12} fill="currentColor" className="text-amber-500" />
+                                                Quick Behavior: {student.firstName}
+                                             </DropdownMenuLabel>
+                                             <DropdownMenuSeparator />
+                                             <div className="p-1 space-y-1">
+                                                {behaviors.filter(b => b.type === 'Positive').length > 0 && (
+                                                   <>
+                                                      <div className="grid grid-cols-1 gap-0.5">
+                                                         {behaviors.filter(b => b.type === 'Positive').map(b => (
+                                                            <DropdownMenuItem 
+                                                               key={b.id} 
+                                                               className="flex items-center justify-between text-[11px] font-bold cursor-pointer hover:bg-green-50 text-green-700 p-1.5 focus:text-green-800 focus:bg-green-50"
+                                                               onClick={async () => { await trackBehavior(student.id, b); toast.success(`Logged ${b.name} for ${student.firstName}`); }}
+                                                            >
+                                                               <div className="flex items-center gap-2">
+                                                                  <Smile size={14} />
+                                                                  {b.name}
+                                                               </div>
+                                                               <span className="bg-green-100 px-1 rounded">+{b.points}</span>
+                                                            </DropdownMenuItem>
+                                                         ))}
                                                       </div>
-                                                      <span className="bg-slate-100 px-1 rounded">0</span>
+                                                      <DropdownMenuSeparator />
+                                                   </>
+                                                )}
+                                                {behaviors.filter(b => b.type === 'Negative').length > 0 && (
+                                                   <>
+                                                      <div className="grid grid-cols-1 gap-0.5">
+                                                         {behaviors.filter(b => b.type === 'Negative').map(b => (
+                                                            <DropdownMenuItem 
+                                                               key={b.id} 
+                                                               className="flex items-center justify-between text-[11px] font-bold cursor-pointer hover:bg-red-50 text-red-700 p-1.5 focus:text-red-800 focus:bg-red-50"
+                                                               onClick={async () => { await trackBehavior(student.id, b); toast.success(`Logged ${b.name} for ${student.firstName}`); }}
+                                                            >
+                                                               <div className="flex items-center gap-2">
+                                                                  <Frown size={14} />
+                                                                  {b.name}
+                                                               </div>
+                                                               <span className="bg-red-100 px-1 rounded">{b.points}</span>
+                                                            </DropdownMenuItem>
+                                                         ))}
+                                                      </div>
+                                                      <DropdownMenuSeparator />
+                                                   </>
+                                                )}
+                                                <div className="grid grid-cols-1 gap-0.5">
+                                                   {behaviors.filter(b => b.type === 'Neutral' && b.name !== 'Note').map(b => (
+                                                      <DropdownMenuItem 
+                                                         key={b.id} 
+                                                         className="flex items-center justify-between text-[11px] font-bold cursor-pointer hover:bg-slate-50 text-slate-700 p-1.5 focus:text-slate-800 focus:bg-slate-50"
+                                                         onClick={async () => { await trackBehavior(student.id, b); toast.success(`Logged ${b.name} for ${student.firstName}`); }}
+                                                      >
+                                                         <div className="flex items-center gap-2">
+                                                            <Clock size={14} />
+                                                            {b.name}
+                                                         </div>
+                                                         <span className="bg-slate-100 px-1 rounded">0</span>
+                                                      </DropdownMenuItem>
+                                                   ))}
+                                                   <DropdownMenuItem 
+                                                      className="flex items-center gap-2 text-[11px] font-bold cursor-pointer hover:bg-indigo-50 text-indigo-700 p-1.5 focus:text-indigo-800 focus:bg-indigo-50"
+                                                      onClick={() => setNoteStudent(student)}
+                                                   >
+                                                      <MessageSquare size={14} />
+                                                      Add Custom Note...
                                                    </DropdownMenuItem>
-                                                ))}
-                                                <DropdownMenuItem 
-                                                   className="flex items-center gap-2 text-[11px] font-bold cursor-pointer hover:bg-indigo-50 text-indigo-700 p-1.5 focus:text-indigo-800 focus:bg-indigo-50"
-                                                   onClick={() => setNoteStudent(student)}
-                                                >
-                                                   <MessageSquare size={14} />
-                                                   Add Custom Note...
-                                                </DropdownMenuItem>
+                                                </div>
                                              </div>
-                                          </div>
+                                          </DropdownMenuGroup>
                                        </DropdownMenuContent>
                                     </DropdownMenu>
                                   </div>
