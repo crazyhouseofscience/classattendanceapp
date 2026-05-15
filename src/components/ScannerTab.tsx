@@ -460,10 +460,9 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     }
   };
 
-  const handleScan = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const rawCode = inputRef.current?.value || barcode;
-    const code = rawCode.trim();
+  const processScan = async (rawCode: string, predefinedPurpose: string | null = null) => {
+    let code = rawCode.trim().toUpperCase();
+    if (code.length > 6 && code.length % 6 === 0) code = code.slice(0, 6);
 
     // IMMEDIATE DOM CLEARANCE (Synchronous, before any async work)
     if (inputRef.current) {
@@ -482,8 +481,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     
     if (!code) return;
 
-    const purpose = scanReason;
-    setScanReason(null);
+    const purpose = predefinedPurpose;
 
     const effectivePeriodName = (activePeriodName && activePeriodName !== 'all') ? activePeriodName : 'Unspecified Period';
     const effectiveScheduleId = activeScheduleId || 'N/A';
@@ -593,6 +591,14 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
          toast.warning(`Unknown student scanned: ${code}`, { duration: 3000 });
        }
     }
+  };
+
+  const handleScan = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const rawCode = inputRef.current?.value || barcode;
+    const purpose = scanReason;
+    setScanReason(null);
+    await processScan(rawCode, purpose);
   };
 
   const manualMark = async (student: Student, forceStatus?: 'Present' | 'Late' | 'Absent' | 'Cut' | 'Left Early', isExcused = false) => {
@@ -881,7 +887,21 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                 className={`flex-1 text-2xl px-3 focus:outline-none font-mono font-black tracking-widest transition-all bg-transparent min-w-0 ${isReady ? 'text-green-950 placeholder:text-green-300' : 'text-red-950 placeholder:text-red-300'}`}
                 autoFocus
                 value={barcode}
-                onChange={e => setBarcode(e.target.value)}
+                onChange={e => {
+                  const val = e.target.value.toUpperCase();
+                  setBarcode(val);
+                  
+                  if (val.trim().length >= 6) {
+                     const codePart = val.trim().slice(0, 6);
+                     const purpose = scanReason;
+                     setScanReason(null);
+                     processScan(codePart, purpose);
+                     e.target.value = '';
+                     setBarcode('');
+                     // Let focus return to input if it's lost
+                     setTimeout(() => inputRef.current?.focus(), 0);
+                  }
+                }}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
                 placeholder="PROMPT TO SCAN (6 DIGITS)..."
