@@ -447,6 +447,22 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
             </button>
 
             <button
+                onClick={() => {
+                   const available = students.filter(s => !absentStudents.has(s.id));
+                   if (available.length === 0) return;
+                   const random = available[Math.floor(Math.random() * available.length)];
+                   setSelectedStudentForHistory(random);
+                   toast.success(`Selected ${random.firstName} randomly!`);
+                }}
+                className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all shadow-sm border",
+                    "bg-indigo-600 text-white border-indigo-700 hover:bg-indigo-700"
+                )}
+            >
+                Pick Random
+            </button>
+
+            <button
                 onClick={() => setLayoutMode(prev => prev === 'grid' ? 'freeform' : 'grid')}
                 className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shadow-sm border",

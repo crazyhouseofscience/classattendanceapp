@@ -5,17 +5,38 @@ import { Button } from './ui/button';
 import { getDB, Student, ScanEvent, Schedule, BehaviorEvent } from '../lib/db';
 import { triggerAutoBackup } from '../lib/gdrive';
 import { format } from 'date-fns';
-import { CheckCircle, XCircle, AlertTriangle, Clock, Edit2, FileText } from 'lucide-react';
+import { CheckCircle, XCircle, AlertTriangle, Clock, Edit2, FileText, Star, Smile, Frown, MessageSquare, Plus } from 'lucide-react';
 import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
 import { Input } from './ui/input';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuLabel,
+  DropdownMenuSeparator
+} from './ui/dropdown-menu';
 
 interface ScannerTabProps {
   activeScheduleId: string | null;
   activePeriodName: string | null;
   activeSchedule?: Schedule;
 }
+
+const DEFAULT_BEHAVIORS = [
+  { id: 'b1', name: 'On Task', points: 1, type: 'Positive' },
+  { id: 'b2', name: 'Helping Others', points: 1, type: 'Positive' },
+  { id: 'b3', name: 'Great Answer', points: 1, type: 'Positive' },
+  { id: 'b4', name: 'Off Task', points: -1, type: 'Negative' },
+  { id: 'b5', name: 'Disrespect', points: -2, type: 'Negative' },
+  { id: 'b6', name: 'Unprepared', points: -1, type: 'Negative' },
+  { id: 'b7', name: 'Late', points: -1, type: 'Negative' },
+  { id: 'b8', name: 'Bathroom', points: 0, type: 'Neutral' },
+  { id: 'b9', name: 'Nurse', points: 0, type: 'Neutral' },
+  { id: 'b10', name: 'Office', points: 0, type: 'Neutral' }
+];
 
 export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule }: ScannerTabProps) {
   const [barcode, setBarcode] = useState('');
@@ -24,6 +45,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const [lastScan, setLastScan] = useState<{ student: Student | null, barcode?: string, status: 'success' | 'unknown_barcode' | 'not_in_period', timestamp: number } | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
   const [scans, setScans] = useState<(ScanEvent & { studentInfo?: Student })[]>([]);
+  const [behaviors, setBehaviors] = useState(DEFAULT_BEHAVIORS);
   const [gracePeriod, setGracePeriodState] = useState(5);
   const [scanReason, setScanReason] = useState<string | null>(null);
   const [viewDate, setViewDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
@@ -33,6 +55,20 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   
   const [noteStudent, setNoteStudent] = useState<Student | null>(null);
   const [noteText, setNoteText] = useState('');
+
+  const [isFocused, setIsFocused] = useState(false);
+  const [windowFocused, setWindowFocused] = useState(true);
+  const [scannerEnabled, setScannerEnabled] = useState(true);
+  const [view, setView] = useState<'attendance' | 'movement'>('attendance');
+
+  const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status' | 'rank' | 'id' | 'time'>('lastName');
+  const [markArrivalTime, setMarkArrivalTime] = useState(format(new Date(), 'HH:mm'));
+  const [elapsedTime, setElapsedTime] = useState<string>('00:00');
+  const [manualStartTimeInternal, setManualStartTimeInternal] = useState<string | null>(null);
+  const [manualEndTimeInternal, setManualEndTimeInternal] = useState<string | null>(null);
+
+  const getOverrideKey = () => `override_${viewDate}_${activeScheduleId}_${activePeriodName}`;
+  const getOverrideEndKey = () => `override_end_${viewDate}_${activeScheduleId}_${activePeriodName}`;
 
   const trackBehavior = async (studentId: string, behavior: { name: string, points: number, type: string }, notes?: string) => {
     const db = await getDB();
@@ -99,6 +135,9 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     const gpSetting = await db.get('settings', 'grace_period');
     if (gpSetting) setGracePeriodState(gpSetting.value);
     
+    const customBehaviors = await db.get('settings', 'custom_behaviors');
+    if (customBehaviors) setBehaviors(customBehaviors.value);
+
     const key = getOverrideKey();
     const endKey = getOverrideEndKey();
     const startSetting = await db.get('settings', key);
@@ -112,11 +151,6 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     await db.put('settings', { key: 'grace_period', value: val });
     setGracePeriodState(val);
   };
-
-  const [isFocused, setIsFocused] = useState(false);
-  const [windowFocused, setWindowFocused] = useState(true);
-  const [scannerEnabled, setScannerEnabled] = useState(true);
-  const [view, setView] = useState<'attendance' | 'movement'>('attendance');
 
   useEffect(() => {
     const loadScannerSetting = async () => {
@@ -199,15 +233,6 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
      
      return { status: 'OnTime', text: 'On Time', time: scan.timestamp, excused: !!scan.isExcused, noPass: !!scan.hasNoPass, scanId: scan.id, leftEarly };
   };
-
-  const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status' | 'rank' | 'id' | 'time'>('lastName');
-  const [markArrivalTime, setMarkArrivalTime] = useState(format(new Date(), 'HH:mm'));
-  const [elapsedTime, setElapsedTime] = useState<string>('00:00');
-  const [manualStartTimeInternal, setManualStartTimeInternal] = useState<string | null>(null);
-  const [manualEndTimeInternal, setManualEndTimeInternal] = useState<string | null>(null);
-
-  const getOverrideKey = () => `override_${viewDate}_${activeScheduleId}_${activePeriodName}`;
-  const getOverrideEndKey = () => `override_end_${viewDate}_${activeScheduleId}_${activePeriodName}`;
 
   const setManualStartTime = async (time: string | null) => {
     const key = getOverrideKey();
@@ -1016,12 +1041,91 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                   </div>
                                </TableCell>
                                <TableCell className="w-[85px] py-0 px-1.5 text-left border-l border-slate-100/50">
-                                   <div className="flex items-center justify-start">
+                                   <div className="flex items-center justify-start gap-1">
                                     {statusInfo.status === 'OnTime' && <span className="px-2.5 py-1 rounded-[2px] text-[11px] font-black bg-green-100 text-green-700 border border-green-200 uppercase whitespace-nowrap">ON TIME</span>}
                                     {statusInfo.status === 'Late' && <span className="px-2.5 py-1 rounded-[2px] text-[11px] font-black bg-amber-100 text-amber-700 border border-amber-200 uppercase whitespace-nowrap">LATE</span>}
                                     {statusInfo.status === 'Present' && <span className="px-2.5 py-1 rounded-[2px] text-[11px] font-black bg-indigo-100 text-indigo-700 border border-indigo-200 uppercase whitespace-nowrap">PRESENT</span>}
                                     {statusInfo.status === 'Absent' && <span className="px-2.5 py-1 rounded-[2px] text-[11px] font-black bg-slate-50 text-slate-300 border border-slate-100 uppercase whitespace-nowrap">ABSENT</span>}
                                     {statusInfo.status === 'Cut' && <span className="px-2.5 py-1 rounded-[2px] text-[11px] font-black bg-red-100 text-red-700 border border-red-200 uppercase whitespace-nowrap">CUT</span>}
+                                    
+                                    <DropdownMenu>
+                                       <DropdownMenuTrigger render={
+                                          <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-slate-300 hover:text-amber-500 hover:bg-amber-50 rounded-full transition-all opacity-0 group-hover:opacity-100">
+                                             <Star size={14} fill={statusInfo.status === 'Absent' ? 'none' : 'currentColor'} className={statusInfo.status === 'Absent' ? 'opacity-30' : ''} />
+                                          </Button>
+                                       } />
+                                       <DropdownMenuContent align="end" className="w-56 font-sans">
+                                          <DropdownMenuLabel className="flex items-center gap-2 text-xs font-black uppercase text-slate-400">
+                                             <Star size={12} fill="currentColor" className="text-amber-500" />
+                                             Quick Behavior: {student.firstName}
+                                          </DropdownMenuLabel>
+                                          <DropdownMenuSeparator />
+                                          <div className="p-1 space-y-1">
+                                             {behaviors.filter(b => b.type === 'Positive').length > 0 && (
+                                                <>
+                                                   <div className="grid grid-cols-1 gap-0.5">
+                                                      {behaviors.filter(b => b.type === 'Positive').map(b => (
+                                                         <DropdownMenuItem 
+                                                            key={b.id} 
+                                                            className="flex items-center justify-between text-[11px] font-bold cursor-pointer hover:bg-green-50 text-green-700 p-1.5 focus:text-green-800 focus:bg-green-50"
+                                                            onClick={async () => { await trackBehavior(student.id, b); toast.success(`Logged ${b.name} for ${student.firstName}`); }}
+                                                         >
+                                                            <div className="flex items-center gap-2">
+                                                               <Smile size={14} />
+                                                               {b.name}
+                                                            </div>
+                                                            <span className="bg-green-100 px-1 rounded">+{b.points}</span>
+                                                         </DropdownMenuItem>
+                                                      ))}
+                                                   </div>
+                                                   <DropdownMenuSeparator />
+                                                </>
+                                             )}
+                                             {behaviors.filter(b => b.type === 'Negative').length > 0 && (
+                                                <>
+                                                   <div className="grid grid-cols-1 gap-0.5">
+                                                      {behaviors.filter(b => b.type === 'Negative').map(b => (
+                                                         <DropdownMenuItem 
+                                                            key={b.id} 
+                                                            className="flex items-center justify-between text-[11px] font-bold cursor-pointer hover:bg-red-50 text-red-700 p-1.5 focus:text-red-800 focus:bg-red-50"
+                                                            onClick={async () => { await trackBehavior(student.id, b); toast.success(`Logged ${b.name} for ${student.firstName}`); }}
+                                                         >
+                                                            <div className="flex items-center gap-2">
+                                                               <Frown size={14} />
+                                                               {b.name}
+                                                            </div>
+                                                            <span className="bg-red-100 px-1 rounded">{b.points}</span>
+                                                         </DropdownMenuItem>
+                                                      ))}
+                                                   </div>
+                                                   <DropdownMenuSeparator />
+                                                </>
+                                             )}
+                                             <div className="grid grid-cols-1 gap-0.5">
+                                                {behaviors.filter(b => b.type === 'Neutral' && b.name !== 'Note').map(b => (
+                                                   <DropdownMenuItem 
+                                                      key={b.id} 
+                                                      className="flex items-center justify-between text-[11px] font-bold cursor-pointer hover:bg-slate-50 text-slate-700 p-1.5 focus:text-slate-800 focus:bg-slate-50"
+                                                      onClick={async () => { await trackBehavior(student.id, b); toast.success(`Logged ${b.name} for ${student.firstName}`); }}
+                                                   >
+                                                      <div className="flex items-center gap-2">
+                                                         <Clock size={14} />
+                                                         {b.name}
+                                                      </div>
+                                                      <span className="bg-slate-100 px-1 rounded">0</span>
+                                                   </DropdownMenuItem>
+                                                ))}
+                                                <DropdownMenuItem 
+                                                   className="flex items-center gap-2 text-[11px] font-bold cursor-pointer hover:bg-indigo-50 text-indigo-700 p-1.5 focus:text-indigo-800 focus:bg-indigo-50"
+                                                   onClick={() => setNoteStudent(student)}
+                                                >
+                                                   <MessageSquare size={14} />
+                                                   Add Custom Note...
+                                                </DropdownMenuItem>
+                                             </div>
+                                          </div>
+                                       </DropdownMenuContent>
+                                    </DropdownMenu>
                                   </div>
                                </TableCell>
                                <TableCell className="w-[90px] py-0 px-1.5 text-center border-l border-slate-100/50">
@@ -1238,6 +1342,33 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                <DialogFooter>
                   <Button variant="ghost" onClick={() => setEditingScanId(null)}>Cancel</Button>
                   <Button onClick={saveEditTime} className="bg-indigo-600 hover:bg-indigo-700">Save Time</Button>
+               </DialogFooter>
+            </DialogContent>
+         </Dialog>
+
+         <Dialog open={!!noteStudent} onOpenChange={(open) => !open && setNoteStudent(null)}>
+            <DialogContent className="sm:max-w-md">
+               <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2 text-indigo-600">
+                     <MessageSquare className="w-5 h-5" />
+                     Add Note for {noteStudent?.firstName}
+                  </DialogTitle>
+               </DialogHeader>
+               <div className="py-4 space-y-4">
+                  <div className="space-y-2">
+                     <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Behavior / Status Note</Label>
+                     <textarea 
+                        className="w-full h-32 p-4 text-sm border-2 border-slate-100 rounded-xl focus:border-indigo-500 focus:ring-4 focus:ring-indigo-50 outline-none resize-none transition-all placeholder:text-slate-300 font-medium"
+                        placeholder="Type important details about this student's current status or behavior. This will appear in the behavior log."
+                        value={noteText}
+                        onChange={(e) => setNoteText(e.target.value)}
+                        autoFocus
+                     />
+                  </div>
+               </div>
+               <DialogFooter className="bg-slate-50/50 p-4 border-t rounded-b-xl gap-3">
+                  <Button variant="ghost" onClick={() => setNoteStudent(null)} className="font-bold text-slate-500">Cancel</Button>
+                  <Button onClick={addNote} className="bg-indigo-600 hover:bg-indigo-700 text-white font-bold h-10 px-6 rounded-lg shadow-md underline-none" disabled={!noteText.trim()}>Save Note</Button>
                </DialogFooter>
             </DialogContent>
          </Dialog>
