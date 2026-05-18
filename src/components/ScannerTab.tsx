@@ -65,7 +65,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   const [resolvingScanId, setResolvingScanId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status' | 'rank' | 'id' | 'time'>('lastName');
+  const [sortBy, setSortBy] = useState<'firstName' | 'lastName' | 'status' | 'rank' | 'id' | 'time'>('time');
   const [markArrivalTime, setMarkArrivalTime] = useState(format(new Date(), 'HH:mm'));
   const [elapsedTime, setElapsedTime] = useState<string>('00:00');
   const [manualStartTimeInternal, setManualStartTimeInternal] = useState<string | null>(null);
@@ -576,7 +576,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
     await loadData();
     triggerAutoBackup();
 
-    if (status === 'success' || status === 'not_in_period') {
+    if (status === 'success' || status === 'not_in_period' || status === 'unknown_barcode') {
        setView(isAttendanceScan ? 'attendance' : 'movement');
     }
 
@@ -970,13 +970,13 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
               )}
     
               <div className="leading-tight">
-                <h2 className="text-4xl md:text-5xl font-black flex items-center gap-3 py-1">
+                <h2 className="text-5xl md:text-6xl font-black flex items-center gap-3 py-1">
                   {lastScan.status !== 'unknown_barcode' && lastScan.student 
                     ? <span>{lastScan.student.firstName} {lastScan.student.lastName}</span>
-                    : <span className="text-4xl md:text-5xl text-red-700 bg-red-100 px-3 py-1 rounded-lg">ID: {lastScan.barcode}</span>}
+                    : <span className="text-5xl md:text-6xl text-red-700 bg-red-100 px-3 py-1 rounded-lg">ID: {lastScan.barcode}</span>}
                 </h2>
                 <div className="flex items-center gap-3 mt-1">
-                  <p className="text-sm font-bold uppercase opacity-80 leading-none">
+                  <p className="text-xl md:text-2xl font-bold uppercase opacity-80 leading-none">
                     {lastScan.status === 'success' ? 'MATCH' : 
                     lastScan.status === 'not_in_period' ? 'OUT OF PERIOD' : 'NOT FOUND'}
                   </p>
