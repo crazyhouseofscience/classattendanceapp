@@ -302,7 +302,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
        if (timeA === 0 && timeB === 0) return 0;
        if (timeA === 0) return 1;
        if (timeB === 0) return -1;
-       return timeA - timeB;
+       return timeB - timeA;
     }
 
     if (sortBy === 'status') {
@@ -888,19 +888,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                 autoFocus
                 value={barcode}
                 onChange={e => {
-                  const val = e.target.value.toUpperCase();
-                  setBarcode(val);
-                  
-                  if (val.trim().length >= 6) {
-                     const codePart = val.trim().slice(0, 6);
-                     const purpose = scanReason;
-                     setScanReason(null);
-                     processScan(codePart, purpose);
-                     e.target.value = '';
-                     setBarcode('');
-                     // Let focus return to input if it's lost
-                     setTimeout(() => inputRef.current?.focus(), 0);
-                  }
+                  setBarcode(e.target.value.toUpperCase());
                 }}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
@@ -956,27 +944,27 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
         )}
 
         {lastScan && (
-          <div className={`mt-2 p-1.5 rounded-lg flex items-center justify-between gap-3 border shadow-sm animate-in fade-in slide-in-from-top-1
-            ${lastScan.status === 'success' ? 'bg-green-50 text-green-800 border-green-200' : 
-              lastScan.status === 'not_in_period' ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-red-50 text-red-900 border-red-200'}`}>
+          <div className={`mt-4 p-4 rounded-xl flex items-center justify-between gap-4 border-2 shadow-sm animate-in zoom-in-95 duration-200
+            ${lastScan.status === 'success' ? 'bg-green-50 text-green-900 border-green-300 ring-4 ring-green-100/50' : 
+              lastScan.status === 'not_in_period' ? 'bg-amber-50 text-amber-900 border-amber-300 ring-4 ring-amber-100/50' : 'bg-red-50 text-red-900 border-red-300 ring-4 ring-red-100/50'}`}>
             
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
               {lastScan.status === 'success' ? (
-                 <CheckCircle className="w-5 h-5 text-green-500" />
+                 <CheckCircle className="w-10 h-10 text-green-600" />
               ) : lastScan.status === 'not_in_period' ? (
-                 <AlertTriangle className="w-5 h-5 text-amber-500" />
+                 <AlertTriangle className="w-10 h-10 text-amber-500" />
               ) : (
-                <XCircle className="w-5 h-5 text-red-500" />
+                <XCircle className="w-10 h-10 text-red-500" />
               )}
     
               <div className="leading-tight">
-                <h2 className="text-sm font-black flex items-center gap-2">
+                <h2 className="text-3xl font-black flex items-center gap-3">
                   {lastScan.status !== 'unknown_barcode' && lastScan.student 
                     ? <span>{lastScan.student.firstName} {lastScan.student.lastName}</span>
-                    : <span className="text-xl text-red-700 bg-red-100 px-2 rounded">ID: {lastScan.barcode}</span>}
+                    : <span className="text-3xl text-red-700 bg-red-100 px-3 py-1 rounded-lg">ID: {lastScan.barcode}</span>}
                 </h2>
-                <div className="flex items-center gap-2">
-                  <p className="text-[9px] font-bold uppercase opacity-60 leading-none">
+                <div className="flex items-center gap-3 mt-1">
+                  <p className="text-sm font-bold uppercase opacity-80 leading-none">
                     {lastScan.status === 'success' ? 'MATCH' : 
                     lastScan.status === 'not_in_period' ? 'OUT OF PERIOD' : 'NOT FOUND'}
                   </p>
@@ -984,7 +972,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                       <Button 
                         variant="link" 
                         size="sm" 
-                        className="h-auto p-0 text-[10px] font-black uppercase text-red-600 hover:text-red-800 underline flex items-center gap-1"
+                        className="h-auto p-0 text-[11px] font-black uppercase text-red-600 hover:text-red-800 underline flex items-center gap-1"
                         onClick={() => {
                           const scannerLogs = scans.filter(s => s.status === 'unknown_barcode');
                           if (scannerLogs.length > 0) {
@@ -993,28 +981,28 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                           setManualSearchOpen(true);
                         }}
                       >
-                        <AlertTriangle size={10} />
+                        <AlertTriangle size={14} />
                         FIX THIS SCAN
                       </Button>
                     )}
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-1 overflow-x-auto no-scrollbar flex-1 ml-4 py-0.5">
+              <div className="flex items-center gap-2 overflow-x-auto no-scrollbar flex-1 ml-6 py-1">
               {lastScan.status === 'unknown_barcode' && (
                 <div className="flex items-center gap-2">
-                   <p className="text-[10px] font-bold text-red-700 bg-red-100/50 px-2 py-0.5 rounded cursor-help" title="The scanner might have missed a digit. Click 'FIX THIS SCAN' to search for the student manually.">
+                   <p className="text-xs font-bold text-red-700 bg-red-100/50 px-3 py-1.5 rounded cursor-help" title="The scanner might have missed a digit. Click 'FIX THIS SCAN' to search for the student manually.">
                      Scanner missed a digit?
                    </p>
                 </div>
               )}
               {lastScan.status !== 'unknown_barcode' && lastScan.student && (
-                <div className="flex items-center gap-1.5 animate-in fade-in zoom-in duration-300">
-                  <div className="w-[1px] h-6 bg-slate-200 mx-1" />
+                <div className="flex items-center gap-2 animate-in fade-in zoom-in duration-300">
+                  <div className="w-[2px] h-10 bg-slate-200 mx-2" />
                   {[
-                    { name: 'On Task', icon: Smile, color: 'text-green-600 bg-green-100 hover:bg-green-200 border-green-200' },
-                    { name: 'Great Answer', icon: Star, color: 'text-amber-600 bg-amber-100 hover:bg-amber-200 border-amber-200' },
-                    { name: 'Off Task', icon: Frown, color: 'text-red-600 bg-red-100 hover:bg-red-200 border-red-200' },
+                    { name: 'On Task', icon: Smile, color: 'text-green-700 bg-green-100 hover:bg-green-200 border-green-300' },
+                    { name: 'Great Answer', icon: Star, color: 'text-amber-700 bg-amber-100 hover:bg-amber-200 border-amber-300' },
+                    { name: 'Off Task', icon: Frown, color: 'text-red-700 bg-red-100 hover:bg-red-200 border-red-300' },
                   ].map(btn => {
                     const b = behaviors.find(x => x.name === btn.name);
                     if (!b) return null;
@@ -1023,13 +1011,13 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                         key={b.id}
                         size="sm"
                         variant="ghost"
-                        className={`h-7 px-2 text-[9px] font-black uppercase border shadow-sm transition-all hover:scale-105 active:scale-95 ${btn.color}`}
+                        className={`h-10 px-3 text-[10px] font-black uppercase border-2 shadow-sm transition-all hover:scale-105 active:scale-95 ${btn.color}`}
                         onClick={async () => {
                           await trackBehavior(lastScan.student!.id, b);
                           toast.success(`Logged ${b.name} for ${lastScan.student!.firstName}`);
                         }}
                       >
-                        <btn.icon size={12} className="mr-1" />
+                        <btn.icon size={16} className="mr-1.5" />
                         {b.name}
                       </Button>
                     );
@@ -1037,16 +1025,16 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                   <Button 
                     size="sm"
                     variant="ghost"
-                    className="h-7 px-2 text-[9px] font-black uppercase text-indigo-600 bg-indigo-50 border border-indigo-200 shadow-sm hover:bg-indigo-100 transition-all hover:scale-105 active:scale-95"
+                    className="h-10 px-3 text-[10px] font-black uppercase text-indigo-700 bg-indigo-50 border-2 border-indigo-200 shadow-sm hover:bg-indigo-100 transition-all hover:scale-105 active:scale-95"
                     onClick={() => setNoteStudent(lastScan.student)}
                   >
-                    <MessageSquare size={12} className="mr-1" />
+                    <MessageSquare size={16} className="mr-1.5" />
                     Note
                   </Button>
                 </div>
               )}
             </div>
-            <span className="text-[10px] font-mono opacity-50 tabular-nums shrink-0">{format(new Date(lastScan.timestamp), 'h:mm:ss a')}</span>
+            <span className="text-xs font-mono font-bold opacity-60 tabular-nums shrink-0 ml-4">{format(new Date(lastScan.timestamp), 'h:mm:ss a')}</span>
           </div>
         )}
       </div>
