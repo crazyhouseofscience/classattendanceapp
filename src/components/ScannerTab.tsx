@@ -888,7 +888,19 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                 autoFocus
                 value={barcode}
                 onChange={e => {
-                  setBarcode(e.target.value.toUpperCase());
+                  const val = e.target.value.toUpperCase();
+                  setBarcode(val);
+                  
+                  if (val.trim().length >= 6) {
+                     const codePart = val.trim().slice(0, 6);
+                     const purpose = scanReason;
+                     setScanReason(null);
+                     processScan(codePart, purpose);
+                     e.target.value = '';
+                     setBarcode('');
+                     // Let focus return to input if it's lost
+                     setTimeout(() => inputRef.current?.focus(), 0);
+                  }
                 }}
                 onFocus={() => setIsFocused(true)}
                 onBlur={() => setIsFocused(false)}
@@ -958,10 +970,10 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
               )}
     
               <div className="leading-tight">
-                <h2 className="text-3xl font-black flex items-center gap-3">
+                <h2 className="text-4xl md:text-5xl font-black flex items-center gap-3 py-1">
                   {lastScan.status !== 'unknown_barcode' && lastScan.student 
                     ? <span>{lastScan.student.firstName} {lastScan.student.lastName}</span>
-                    : <span className="text-3xl text-red-700 bg-red-100 px-3 py-1 rounded-lg">ID: {lastScan.barcode}</span>}
+                    : <span className="text-4xl md:text-5xl text-red-700 bg-red-100 px-3 py-1 rounded-lg">ID: {lastScan.barcode}</span>}
                 </h2>
                 <div className="flex items-center gap-3 mt-1">
                   <p className="text-sm font-bold uppercase opacity-80 leading-none">
