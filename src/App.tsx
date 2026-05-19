@@ -91,11 +91,22 @@ export default function App() {
            getDB().then(db => db.put('settings', { key: 'activeScheduleId', value: targetSchedule.id }));
         }
 
-        // 2. Find current or next period based on time
-        let targetPeriod = targetSchedule.periods.find(p => p.startTime <= timeStr && p.endTime >= timeStr);
+        // 2. Find current or next period based on time (advance 1 minute early)
+        const getCutoff = (endTime: string) => {
+            const [h, m] = endTime.split(':').map(Number);
+            let cutoffH = h;
+            let cutoffM = m - 1;
+            if (cutoffM < 0) { cutoffM += 60; cutoffH--; }
+            return `${cutoffH.toString().padStart(2, '0')}:${cutoffM.toString().padStart(2, '0')}`;
+        };
+
+        let targetPeriod = targetSchedule.periods.find(p => {
+            return p.startTime <= timeStr && timeStr < getCutoff(p.endTime);
+        });
+
         if (!targetPeriod) {
            // If between periods, auto-select the next upcoming period
-           targetPeriod = targetSchedule.periods.find(p => p.startTime > timeStr);
+           targetPeriod = targetSchedule.periods.find(p => getCutoff(p.endTime) > timeStr);
         }
 
         if (targetPeriod && activePeriodName !== targetPeriod.name) {

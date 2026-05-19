@@ -7,7 +7,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { DndContext, closestCenter, DragEndEvent, useDraggable, useSensors, useSensor, PointerSensor } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
-import { Layout, Users as UsersIcon, Undo2, GripHorizontal, Settings, X, Plus, Trash2, Upload } from 'lucide-react';
+import { Layout, Users as UsersIcon, Undo2, GripHorizontal, Settings, X, Plus, Trash2, Upload, FileText } from 'lucide-react';
 import { cn, isStudentInPeriod } from '../lib/utils';
 
 const DEFAULT_BEHAVIORS = [
@@ -39,6 +39,8 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
   const [showBehaviorManager, setShowBehaviorManager] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedDate, setSelectedDate] = useState<string>(format(new Date(), 'yyyy-MM-dd'));
+  const [showNotes, setShowNotes] = useState(false);
+  const [classNotes, setClassNotes] = useState('');
 
   // ...
 
@@ -137,8 +139,18 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
     });
     setAbsentStudents(absentIds);
     setLateStudents(lateIds);
+
+    const classNoteKey = `classNote_${activePeriodName || 'all'}_${selectedDate}`;
+    const classNoteObj = await settingsStore.get(classNoteKey);
+    setClassNotes(classNoteObj?.value || '');
   };
 
+  const saveClassNotes = async (text: string) => {
+    const db = await getDB();
+    const key = `classNote_${activePeriodName || 'all'}_${selectedDate}`;
+    await db.put('settings', { key, value: text });
+    triggerAutoBackup();
+  };
 
   const trackBehavior = async (studentId: string, b: any, comment?: string) => {
     const db = await getDB();
@@ -427,6 +439,17 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
             </button>
 
             <button
+                onClick={() => setShowNotes(!showNotes)}
+                className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shadow-sm border",
+                    showNotes ? "bg-amber-50 text-amber-700 border-amber-200" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+                )}
+            >
+                <FileText size={14} />
+                Class Notes
+            </button>
+
+            <button
                 onClick={() => setShowOnlyActive(!showOnlyActive)}
                 className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all shadow-sm border",
@@ -475,8 +498,9 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto pb-4">
-          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+      <div className="flex flex-1 overflow-hidden min-h-0 gap-4">
+        <div className="flex-1 overflow-y-auto pb-4">
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                {layoutMode === 'grid' ? (
                  <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-3 p-1">
                     {students.map(student => (
@@ -520,6 +544,24 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
                  </div>
               )}
           </DndContext>
+        </div>
+        {showNotes && (
+          <div className="w-80 shrink-0 bg-white border border-slate-200 rounded-xl overflow-hidden flex flex-col shadow-sm mb-4">
+            <div className="flex items-center justify-between p-3 border-b border-slate-100 bg-slate-50 shrink-0">
+               <h3 className="font-bold text-sm text-slate-800 flex items-center gap-2"><FileText size={16} className="text-amber-500" /> Class Notes</h3>
+               <button onClick={() => setShowNotes(false)} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
+            </div>
+            <textarea 
+               className="flex-1 w-full bg-[#fffae8] p-4 text-sm font-medium text-slate-800 outline-none resize-none focus:ring-inset focus:ring-4 focus:ring-amber-200/50"
+               placeholder={`Type general notes or observations for ${activePeriodName || 'this class'} here...`}
+               value={classNotes}
+               onChange={(e) => {
+                  setClassNotes(e.target.value);
+                  saveClassNotes(e.target.value);
+               }}
+            />
+          </div>
+        )}
       </div>
       {showBehaviorManager && (
          <BehaviorSettingsModal 
