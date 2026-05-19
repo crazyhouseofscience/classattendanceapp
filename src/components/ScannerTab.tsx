@@ -960,22 +960,24 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
             ${lastScan.status === 'success' ? 'bg-green-50 text-green-900 border-green-300 ring-4 ring-green-100/50' : 
               lastScan.status === 'not_in_period' ? 'bg-amber-50 text-amber-900 border-amber-300 ring-4 ring-amber-100/50' : 'bg-red-50 text-red-900 border-red-300 ring-4 ring-red-100/50'}`}>
             
-            <div className="flex items-center gap-4">
-              {lastScan.status === 'success' ? (
-                 <CheckCircle className="w-10 h-10 text-green-600" />
-              ) : lastScan.status === 'not_in_period' ? (
-                 <AlertTriangle className="w-10 h-10 text-amber-500" />
-              ) : (
-                <XCircle className="w-10 h-10 text-red-500" />
-              )}
+            <div className="flex items-start md:items-center gap-4">
+              <div className="shrink-0 mt-2 md:mt-0">
+                {lastScan.status === 'success' ? (
+                   <CheckCircle className="w-10 h-10 text-green-600" />
+                ) : lastScan.status === 'not_in_period' ? (
+                   <AlertTriangle className="w-10 h-10 text-amber-500" />
+                ) : (
+                  <XCircle className="w-10 h-10 text-red-500" />
+                )}
+              </div>
     
-              <div className="leading-tight">
-                <h2 className="text-5xl md:text-6xl font-black flex items-center gap-3 py-1">
+              <div className="leading-tight min-w-0 flex-1 overflow-hidden">
+                <h2 className="text-5xl md:text-6xl font-black py-1 break-words">
                   {lastScan.status !== 'unknown_barcode' && lastScan.student 
                     ? <span>{lastScan.student.firstName} {lastScan.student.lastName}</span>
-                    : <span className="text-5xl md:text-6xl text-red-700 bg-red-100 px-3 py-1 rounded-lg">ID: {lastScan.barcode}</span>}
+                    : <span className="text-5xl md:text-6xl text-red-700 bg-red-100 px-3 py-1 rounded-lg break-all max-w-full inline-block">ID: {lastScan.barcode}</span>}
                 </h2>
-                <div className="flex items-center gap-3 mt-1">
+                <div className="flex items-center gap-3 mt-1 flex-wrap">
                   <p className="text-xl md:text-2xl font-bold uppercase opacity-80 leading-none">
                     {lastScan.status === 'success' ? 'MATCH' : 
                     lastScan.status === 'not_in_period' ? 'OUT OF PERIOD' : 'NOT FOUND'}
