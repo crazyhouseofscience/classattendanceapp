@@ -331,44 +331,58 @@ export default function App() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-2 py-1 w-full overflow-hidden min-w-0 flex-1">
-        <Tabs defaultValue="scanner" className="space-y-1">
-          <TabsList className="bg-slate-100 border p-0.5 h-7 w-fit">
-            <TabsTrigger value="scanner" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Scanner</TabsTrigger>
-            <TabsTrigger value="students" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Students</TabsTrigger>
-            <TabsTrigger value="roster" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Roster</TabsTrigger>
-            <TabsTrigger value="reports" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Reports</TabsTrigger>
-            <TabsTrigger value="behavior" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Behavior</TabsTrigger>
-            <TabsTrigger value="schedules" className="h-6 px-3 text-[10px] font-black uppercase data-[state=active]:bg-white data-[state=active]:text-indigo-600 transition-all shadow-none">Schedules</TabsTrigger>
+      <main className="max-w-7xl mx-auto px-4 py-2 w-full overflow-hidden min-w-0 flex-1 flex flex-col">
+        <Tabs defaultValue="scanner" orientation="vertical" className="flex flex-col md:flex-row h-full min-h-0 gap-4 md:gap-6">
+          <TabsList className="bg-slate-50 border p-1.5 h-fit w-full md:w-40 flex-row md:flex-col justify-start items-stretch shrink-0 mt-0">
+            <TabsTrigger value="scanner" className="md:h-9 justify-start px-3 text-xs font-black uppercase transition-all shadow-none">Scanner</TabsTrigger>
+            <TabsTrigger value="students" className="md:h-9 justify-start px-3 text-xs font-black uppercase transition-all shadow-none">Students</TabsTrigger>
+            <TabsTrigger value="roster" className="md:h-9 justify-start px-3 text-xs font-black uppercase transition-all shadow-none">Roster</TabsTrigger>
+            <TabsTrigger value="reports" className="md:h-9 justify-start px-3 text-xs font-black uppercase transition-all shadow-none">Reports</TabsTrigger>
+            <TabsTrigger value="behavior" className="md:h-9 justify-start px-3 text-xs font-black uppercase transition-all shadow-none">Behavior</TabsTrigger>
+            <TabsTrigger value="schedules" className="md:h-9 justify-start px-3 text-xs font-black uppercase transition-all shadow-none">Schedules</TabsTrigger>
           </TabsList>
           
-          <TabsContent value="scanner" className="pt-1 min-w-0">
-            <ScannerTab activeScheduleId={activeScheduleId} activePeriodName={enrollmentPeriodName} activeSchedule={activeSchedule} />
-          </TabsContent>
-          
-          <TabsContent value="students" className="pt-1 min-w-0">
-            <StudentsTab activePeriodName={enrollmentPeriodName} activeSchedule={activeSchedule} />
-          </TabsContent>
+          <div className="flex-1 min-w-0 flex flex-col h-full bg-transparent overflow-hidden">
+            <TabsContent value="scanner" className="h-full min-h-0 min-w-0 m-0 p-0 outline-none">
+              <div className="h-full flex flex-col">
+                <ScannerTab activeScheduleId={activeScheduleId} activePeriodName={enrollmentPeriodName} activeSchedule={activeSchedule} />
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="students" className="h-full min-h-0 min-w-0 m-0 p-0 outline-none">
+              <div className="h-full flex flex-col">
+                <StudentsTab activePeriodName={enrollmentPeriodName} activeSchedule={activeSchedule} />
+              </div>
+            </TabsContent>
 
-          <TabsContent value="roster" className="pt-1 min-w-0">
-            <RosterTab />
-          </TabsContent>
+            <TabsContent value="roster" className="h-full min-h-0 min-w-0 m-0 p-0 outline-none">
+              <div className="h-full flex flex-col">
+                <RosterTab />
+              </div>
+            </TabsContent>
 
-          <TabsContent value="reports" className="pt-1 min-w-0">
-            <ReportsTab 
-               activePeriodName={enrollmentPeriodName} 
-               activeScheduleId={activeScheduleId} 
-               activeSchedule={activeSchedule} 
-               />
-          </TabsContent>
+            <TabsContent value="reports" className="h-full min-h-0 min-w-0 m-0 p-0 outline-none">
+              <div className="h-full flex flex-col">
+                <ReportsTab 
+                   activePeriodName={enrollmentPeriodName} 
+                   activeScheduleId={activeScheduleId} 
+                   activeSchedule={activeSchedule} 
+                   />
+              </div>
+            </TabsContent>
 
-          <TabsContent value="schedules" className="pt-1 min-w-0">
-            <SchedulesTab />
-          </TabsContent>
+            <TabsContent value="schedules" className="h-full min-h-0 min-w-0 m-0 p-0 outline-none">
+              <div className="h-full flex flex-col">
+                <SchedulesTab />
+              </div>
+            </TabsContent>
 
-          <TabsContent value="behavior" className="pt-1 min-w-0">
-            <BehaviorTab activePeriodName={enrollmentPeriodName} activeScheduleId={activeScheduleId} />
-          </TabsContent>
+            <TabsContent value="behavior" className="h-full min-h-0 min-w-0 m-0 p-0 outline-none">
+              <div className="h-full flex flex-col">
+                <BehaviorTab activePeriodName={enrollmentPeriodName} activeScheduleId={activeScheduleId} />
+              </div>
+            </TabsContent>
+          </div>
         </Tabs>
       </main>
       

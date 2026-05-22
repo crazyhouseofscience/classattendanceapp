@@ -476,8 +476,8 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+    <div className="flex flex-col h-full space-y-4">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 shrink-0">
         <div>
           <h2 className="text-xl font-black tracking-tight text-slate-800">Reports & Analytics</h2>
           <div className="flex gap-4 mt-1">
@@ -588,7 +588,7 @@ export function ReportsTab({ activePeriodName, activeScheduleId, activeSchedule 
          </div>
       </div>
 
-      <div className="border rounded-xl bg-white overflow-x-auto shadow-sm border-slate-200 min-w-0">
+      <div className="border rounded-xl bg-white overflow-auto shadow-sm border-slate-200 min-w-0 flex-1 min-h-0">
         {activeTab === 'logs' && (
             <Table className="min-w-[600px]">
               <TableHeader className="bg-slate-50/50">

@@ -194,13 +194,13 @@ export function SchedulesTab() {
   }
 
   return (
-    <div className="grid grid-cols-12 gap-6">
-      <div className="col-span-4 space-y-4">
-        <div className="flex justify-between items-center">
+    <div className="grid grid-cols-12 gap-6 h-full min-h-0">
+      <div className="col-span-12 lg:col-span-4 space-y-4 flex flex-col h-full overflow-hidden">
+        <div className="flex justify-between items-center shrink-0">
           <h2 className="text-xl font-medium">Schedules</h2>
           <Button size="sm" variant="outline" onClick={createNewSchedule}><Plus className="w-4 h-4" /></Button>
         </div>
-        <div className="space-y-2">
+        <div className="space-y-2 overflow-y-auto flex-1 min-h-0 pr-2">
           {schedules.map(s => (
             <div 
               key={s.id} 
@@ -231,10 +231,10 @@ export function SchedulesTab() {
         </div>
       </div>
 
-      <div className="col-span-8">
+      <div className="col-span-12 lg:col-span-8 overflow-y-auto min-h-0 pr-2">
         {editingSchedule ? (
-          <Card className="border-2 shadow-none">
-            <CardHeader className="bg-slate-50 border-b pb-4">
+          <Card className="border-2 shadow-none flex flex-col h-full min-h-0">
+            <CardHeader className="bg-slate-50 border-b pb-4 shrink-0">
               <div className="flex justify-between items-start">
                 <CardTitle>
                   <Input 
@@ -262,7 +262,7 @@ export function SchedulesTab() {
                 </div>
               </div>
             </CardHeader>
-            <CardContent className="space-y-4 pt-6">
+            <CardContent className="space-y-4 pt-6 flex-1 overflow-y-auto">
               <div className="flex justify-between items-center">
                 <h3 className="font-medium text-slate-500">Periods / Blocks</h3>
                 <Button size="sm" variant="secondary" onClick={addPeriod}>Add Period</Button>

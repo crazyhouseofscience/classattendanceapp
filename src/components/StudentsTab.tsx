@@ -318,8 +318,8 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
+    <div className="flex flex-col h-full space-y-4">
+      <div className="flex justify-between items-center shrink-0">
         <h2 className="text-xl font-medium">
           Student Database {activePeriodName && activePeriodName !== 'all' && <span className="text-slate-500 font-normal">({activePeriodName} Roster)</span>}
         </h2>
@@ -539,8 +539,8 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
         </div>
       </div>
 
-      <div className="border rounded-xl bg-white overflow-x-auto min-w-0">
-        <Table className="min-w-[800px]">
+      <div className="border rounded-xl bg-white overflow-y-auto min-w-0 flex-1 min-h-0">
+        <Table>
           <TableHeader className="bg-slate-50">
             <TableRow>
               <TableHead className="cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('id')}>ID/Barcode</TableHead>
@@ -567,7 +567,7 @@ export function StudentsTab({ activePeriodName, activeSchedule }: StudentsTabPro
                   <TableCell className="whitespace-normal">{s.lastName}</TableCell>
                   <TableCell>{s.grade}</TableCell>
                   <TableCell>{s.gradebookRank || '-'}</TableCell>
-                  <TableCell className="whitespace-normal max-w-[200px]"><span className="text-xs text-slate-500">{s.periods?.join(', ') || 'None'}</span></TableCell>
+                  <TableCell className="whitespace-normal">{s.periods?.join(', ') || 'None'}</TableCell>
                   <TableCell className="w-16">
                     <Button variant="ghost" size="sm" onClick={() => {
                       setOriginalEditId(s.id);

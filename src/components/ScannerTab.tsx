@@ -768,7 +768,112 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-7rem)] relative">
+    <div className="flex flex-col lg:flex-row h-full relative gap-4">
+      {/* Sidebar Controls Area */}
+      <div className="w-full lg:w-48 xl:w-56 order-first lg:order-last shrink-0 bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-4 overflow-y-auto shadow-sm">
+         <div>
+            <h2 className="text-xl font-black tracking-tight text-slate-800 leading-none mb-3 pb-3 border-b">
+               {isReady ? activePeriodName : 'Scanner'}
+            </h2>
+            <div className="flex flex-col gap-1.5 mb-3">
+               <Label className="text-[9px] font-black text-slate-400 uppercase leading-none">Date</Label>
+               <Input 
+                  type="date"
+                  value={viewDate}
+                  onChange={e => setViewDate(e.target.value)}
+                  className="w-full text-xs font-bold h-8"
+               />
+            </div>
+         </div>
+         
+         {isReady && currentPeriodConfig ? (
+            <div className="flex flex-col gap-4">
+              <div className="flex flex-col gap-2 group/manual">
+                 <div className="flex flex-col gap-1.5">
+                    <Label className="text-[9px] font-black text-slate-400 uppercase leading-none">Start</Label>
+                    <div className="flex items-center gap-1.5">
+                       <input 
+                         type="time" 
+                         className="flex-1 bg-slate-50 border border-slate-300 rounded px-2 h-7 font-bold text-xs focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+                         value={manualStartTime || currentPeriodConfig?.startTime || ''}
+                         onChange={(e) => setManualStartTime(e.target.value)}
+                         title="Override Period Start Time"
+                       />
+                       {manualStartTime && (
+                          <button 
+                            onClick={() => setManualStartTime(null)}
+                            className="text-[9px] font-bold text-red-500 hover:text-red-700 uppercase bg-red-50 px-1.5 py-1 rounded"
+                          >
+                             Reset
+                          </button>
+                       )}
+                    </div>
+                 </div>
+                 
+                 <div className="flex flex-col gap-1.5">
+                    <Label className="text-[9px] font-black text-slate-400 uppercase leading-none">End</Label>
+                    <div className="flex items-center gap-1.5">
+                       <input 
+                         type="time" 
+                         className="flex-1 bg-slate-50 border border-slate-300 rounded px-2 h-7 font-bold text-xs focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
+                         value={manualEndTime || currentPeriodConfig?.endTime || ''}
+                         onChange={(e) => setManualEndTime(e.target.value)}
+                         title="Override Period End Time"
+                       />
+                       {manualEndTime && (
+                          <button 
+                            onClick={() => setManualEndTime(null)}
+                            className="text-[9px] font-bold text-red-500 hover:text-red-700 uppercase bg-red-50 px-1.5 py-1 rounded"
+                          >
+                             Reset
+                          </button>
+                       )}
+                    </div>
+                 </div>
+              </div>
+
+              <div className="flex flex-col items-center justify-center bg-indigo-50 border border-indigo-100 rounded-lg py-3">
+                 <span className="text-[9px] font-black text-indigo-400 uppercase tracking-widest leading-none mb-1">Elapsed Status</span>
+                 <span className="text-xl font-black text-indigo-700 tabular-nums leading-none">
+                   {elapsedTime}
+                 </span>
+              </div>
+            </div>
+         ) : (
+           <p className="text-xs text-slate-400 font-bold uppercase mt-4 text-center">
+              Select time period
+           </p>
+         )}
+
+         <div className="flex flex-col gap-2 pt-4 border-t mt-auto text-sm">
+            <div className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-md border shadow-sm">
+               <Label className="text-[9px] font-black text-slate-400 uppercase leading-none mt-0.5">Alerts</Label>
+               <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={toggleScanner}
+                  className={`h-6 px-2 text-[10px] font-black uppercase transition-all ${scannerEnabled ? 'text-green-600 bg-green-50 hover:bg-green-100 ring-1 ring-green-200' : 'text-red-400 bg-red-50/50 hover:bg-red-50 ring-1 ring-red-100'}`}
+               >
+                  {scannerEnabled ? 'ON' : 'OFF'}
+               </Button>
+            </div>
+            
+            <div className="flex flex-col gap-1.5 bg-slate-50 px-3 py-2 rounded-md border shadow-sm">
+               <Label className="text-[9px] font-black text-slate-400 uppercase mt-0.5 leading-none">Grace Mode</Label>
+               <select 
+                 className="flex-1 bg-transparent border border-slate-200 focus:ring-1 focus:border-indigo-400 rounded-md text-xs font-bold p-1 outline-none"
+                 value={gracePeriod}
+                 onChange={e => setGracePeriod(parseInt(e.target.value))}
+               >
+                  {[...Array(11).keys()].map(i => <option key={i} value={i}>{i}m ({i} min)</option>)}
+               </select>
+            </div>
+         </div>
+      </div>
+
+      {/* Main Area */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+      
       {!windowFocused && scannerEnabled && (
           <div className="fixed inset-0 z-50 bg-red-600/90 flex items-center justify-center pointer-events-none p-10 animate-pulse">
               <div className="bg-white p-10 rounded-2xl shadow-2xl text-center border-4 border-red-700">
@@ -777,99 +882,8 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
               </div>
           </div>
       )}
-      {/* Fixed Sticky Header */}
-      <div className="sticky top-0 z-10 bg-slate-50 border-b pb-1 mb-1">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-2 mb-2">
-          <div className="flex items-center gap-3">
-             <h2 className="text-xl font-black tracking-tight text-slate-800 leading-none">
-                {isReady ? activePeriodName : 'Scanner Mode'}
-             </h2>
-             <Input 
-                type="date"
-                value={viewDate}
-                onChange={e => setViewDate(e.target.value)}
-                className="w-36 h-8 text-xs font-bold"
-             />
-          </div>
-          
-          <div className="flex-1 flex justify-center items-center gap-6">
-             {isReady && currentPeriodConfig ? (
-               <>
-                 <div className="flex flex-col items-center gap-1 group/manual">
-                    <div className="flex items-center gap-2">
-                       <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Start</span>
-                       <input 
-                         type="time" 
-                         className="text-base bg-white border border-slate-300 rounded px-2.5 h-8 font-bold focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
-                         value={manualStartTime || currentPeriodConfig?.startTime || ''}
-                         onChange={(e) => setManualStartTime(e.target.value)}
-                         title="Override Period Start Time"
-                       />
-                       {manualStartTime && (
-                          <button 
-                            onClick={() => setManualStartTime(null)}
-                            className="text-xs font-bold text-red-500 hover:text-red-700 uppercase bg-red-50 px-2 py-1 rounded"
-                          >
-                             Reset
-                          </button>
-                       )}
-                    </div>
-                    <div className="flex items-center gap-2">
-                       <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">End</span>
-                       <input 
-                         type="time" 
-                         className="text-base bg-white border border-slate-300 rounded px-2.5 h-8 font-bold focus:ring-2 focus:ring-indigo-500 outline-none cursor-pointer"
-                         value={manualEndTime || currentPeriodConfig?.endTime || ''}
-                         onChange={(e) => setManualEndTime(e.target.value)}
-                         title="Override Period End Time"
-                       />
-                       {manualEndTime && (
-                          <button 
-                            onClick={() => setManualEndTime(null)}
-                            className="text-xs font-bold text-red-500 hover:text-red-700 uppercase bg-red-50 px-2 py-1 rounded"
-                          >
-                             Reset
-                          </button>
-                       )}
-                    </div>
-                 </div>
-
-                 <span className="text-sm shadow-sm bg-indigo-100 text-indigo-700 px-4 py-1.5 rounded-md font-black tabular-nums border border-indigo-200">
-                   {elapsedTime} ELAPSED
-                 </span>
-               </>
-             ) : (
-               <p className="text-sm text-slate-500 font-bold uppercase tracking-wider leading-none">
-                  Select period above
-               </p>
-             )}
-          </div>
-
-          <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-md border shadow-sm h-9">
-             <Label className="text-[10px] font-black text-slate-400 uppercase leading-none">Alerts</Label>
-             <Button 
-                variant="ghost" 
-                size="sm" 
-                onClick={toggleScanner}
-                className={`h-6 px-2 text-[10px] font-black uppercase transition-all ${scannerEnabled ? 'text-green-600 bg-green-50 hover:bg-green-100 ring-1 ring-green-200' : 'text-red-400 bg-red-50/50 hover:bg-red-50 ring-1 ring-red-100'}`}
-             >
-                {scannerEnabled ? 'ON' : 'OFF'}
-             </Button>
-          </div>
-
-          <div className="flex items-center gap-2 bg-white px-3 py-1 rounded-md border shadow-sm h-9">
-             <Label className="text-xs font-bold text-slate-400 uppercase">Grace Mode:</Label>
-             <select 
-               className="border-none bg-transparent focus:ring-0 text-base font-black p-0 pr-6"
-               value={gracePeriod}
-               onChange={e => setGracePeriod(parseInt(e.target.value))}
-             >
-                {[...Array(11).keys()].map(i => <option key={i} value={i}>{i}m</option>)}
-             </select>
-          </div>
-        </div>
-
-        <Card className={`border shadow-sm transition-all duration-300 overflow-hidden ${
+      
+        <Card className={`border shadow-sm shrink-0 transition-all duration-300 overflow-hidden ${
           isReady 
             ? (isFocused ? 'border-green-500 bg-green-50 ring-2 ring-green-100' : 'border-green-200 bg-white') 
             : 'border-red-500 bg-red-50'
@@ -1051,7 +1065,6 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
             <span className="text-xs font-mono font-bold opacity-60 tabular-nums shrink-0 ml-4">{format(new Date(lastScan.timestamp), 'h:mm:ss a')}</span>
           </div>
         )}
-      </div>
       
       {/* Body Area */}
       <div className="flex-1 overflow-hidden flex flex-col gap-2">
@@ -1085,12 +1098,12 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
            {view === 'attendance' && (
               <div className="flex items-center gap-1.5 p-0.5 bg-slate-100 rounded-md">
-                 <span className="text-[8px] font-black text-slate-400 uppercase ml-2 mr-1">Sort Mode:</span>
+                 <span className="text-[10px] font-black text-slate-400 uppercase ml-2 mr-1">Sort Mode:</span>
                  <Button 
                     variant={sortBy === 'status' ? 'secondary' : 'ghost'} 
                     size="sm" 
                     onClick={() => setSortBy('status')}
-                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'status' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                    className={`h-7 px-3 text-xs font-bold uppercase ${sortBy === 'status' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
                  >
                     Status
                  </Button>
@@ -1098,7 +1111,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                     variant={sortBy === 'firstName' ? 'secondary' : 'ghost'} 
                     size="sm" 
                     onClick={() => setSortBy('firstName')}
-                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'firstName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                    className={`h-7 px-3 text-xs font-bold uppercase ${sortBy === 'firstName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
                  >
                     First
                  </Button>
@@ -1106,7 +1119,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                     variant={sortBy === 'lastName' ? 'secondary' : 'ghost'} 
                     size="sm" 
                     onClick={() => setSortBy('lastName')}
-                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'lastName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                    className={`h-7 px-3 text-xs font-bold uppercase ${sortBy === 'lastName' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
                  >
                     Last
                  </Button>
@@ -1114,7 +1127,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                     variant={sortBy === 'rank' ? 'secondary' : 'ghost'} 
                     size="sm" 
                     onClick={() => setSortBy('rank')}
-                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'rank' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                    className={`h-7 px-3 text-xs font-bold uppercase ${sortBy === 'rank' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
                  >
                     Rank
                  </Button>
@@ -1122,7 +1135,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                     variant={sortBy === 'time' ? 'secondary' : 'ghost'} 
                     size="sm" 
                     onClick={() => setSortBy('time')}
-                    className={`h-6 px-3 text-[9px] font-bold uppercase ${sortBy === 'time' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
+                    className={`h-7 px-3 text-xs font-bold uppercase ${sortBy === 'time' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-500'}`}
                  >
                     Arrival
                  </Button>
@@ -1132,28 +1145,28 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
 
         {view === 'attendance' ? (
            <div className="flex-1 flex flex-col border rounded-lg bg-white shadow-sm overflow-hidden min-h-0">
-             <div className="bg-slate-50 px-3 py-1 border-b flex justify-between items-center shrink-0">
-                <h3 className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Attendance Roster</h3>
-                <span className="text-[9px] text-slate-400 font-bold">{students.length} Students</span>
+             <div className="bg-slate-50 px-3 py-2 border-b flex justify-between items-center shrink-0">
+                <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Attendance Roster</h3>
+                <span className="text-xs text-slate-400 font-bold">{students.length} Students</span>
              </div>
-             <div className="flex-1 overflow-auto min-w-0">
-               <div className="flex justify-end p-2 gap-2">
+             <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
+               <div className="flex justify-end p-2 gap-2 shrink-0">
                 <Input 
                     type="time"
                     value={markArrivalTime}
                     onChange={(e) => setMarkArrivalTime(e.target.value)}
-                    className="w-24 h-5 text-[9px]"
+                    className="w-28 h-7 text-xs"
                 />
-                <Button variant="outline" size="sm" onClick={markAllArrived} className="h-5 text-[9px] font-black uppercase px-2 py-0 border-indigo-200 text-indigo-700 hover:bg-indigo-50">Mark Arrival Now</Button>
+                <Button variant="outline" size="sm" onClick={markAllArrived} className="h-7 text-xs font-black uppercase px-3 border-indigo-200 text-indigo-700 hover:bg-indigo-50">Mark Arrival Now</Button>
              </div>
-             <Table className="min-w-[600px]">
+             <Table>
                  <TableHeader className="bg-slate-50/90 sticky top-0 z-20 backdrop-blur-sm shadow-sm">
-                   <TableRow className="h-6 border-b-2 bg-slate-50">
-                     <TableHead className="w-[150px] text-[10px] font-black uppercase py-0 px-2 h-6">Student Name</TableHead>
-                     <TableHead className="w-[240px] text-[10px] font-black uppercase py-0 px-2 h-6 text-left text-slate-500">Quick Actions</TableHead>
-                     <TableHead className="w-[85px] text-[10px] font-black uppercase py-0 px-2 h-6 text-left text-slate-500">Status</TableHead>
-                     <TableHead className="w-[90px] text-[10px] font-black uppercase py-0 px-2 h-6 text-center text-slate-500">Arrival</TableHead>
-                     <TableHead className="w-[120px] text-[10px] font-black uppercase py-0 px-2 h-6 text-left text-slate-500">Flags</TableHead>
+                   <TableRow className="h-8 border-b-2 bg-slate-50">
+                     <TableHead className="w-[200px] text-xs font-black uppercase py-1 px-2 text-slate-600">Student Name</TableHead>
+                     <TableHead className="w-[300px] text-xs font-black uppercase py-1 px-2 text-left text-slate-600">Quick Actions</TableHead>
+                     <TableHead className="w-[90px] text-xs font-black uppercase py-1 px-2 text-left text-slate-600">Status</TableHead>
+                     <TableHead className="w-[100px] text-xs font-black uppercase py-1 px-2 text-center text-slate-600">Arrival</TableHead>
+                     <TableHead className="w-[140px] text-xs font-black uppercase py-1 px-2 text-left text-slate-600">Flags</TableHead>
                      <TableHead className="w-full"></TableHead>
                    </TableRow>
                  </TableHeader>
@@ -1187,11 +1200,11 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                key={student.id} 
                                className={`h-7 border-b group transition-colors ${rowColor}`}
                             >
-                               <TableCell className="w-[150px] py-0 px-2">
+                               <TableCell className="w-[200px] py-1 px-2">
                                   <div className="flex items-center gap-2 overflow-hidden">
-                                     <span className={`text-xs font-bold leading-none truncate ${nameColor}`}>{student.firstName} {student.lastName}</span>
-                                     {student.gradebookRank && <span className="text-[9px] bg-indigo-50 text-indigo-500 font-black px-1 rounded-sm shadow-sm ring-1 ring-indigo-200">#{student.gradebookRank}</span>}
-                                     <span className="text-sm text-slate-900 font-mono font-black tracking-tight leading-none uppercase shrink-0 bg-slate-100 px-1.5 py-0.5 rounded shadow-sm border border-slate-200">{student.id}</span>
+                                     <span className={`text-sm font-bold leading-tight truncate ${nameColor}`}>{student.firstName} {student.lastName}</span>
+                                     {student.gradebookRank && <span className="text-[10px] bg-indigo-50 text-indigo-500 font-black px-1.5 rounded-sm shadow-sm ring-1 ring-indigo-200">#{student.gradebookRank}</span>}
+                                     <span className="text-sm text-slate-900 font-mono font-black tracking-tight leading-none uppercase shrink-0 bg-slate-100 px-1.5 py-1 rounded shadow-sm border border-slate-200">{student.id}</span>
                                      {moveStatus?.out && (
                                         <span className="inline-flex items-center gap-1 font-black text-[10px] text-amber-600 uppercase bg-amber-50 px-2 rounded ring-1 ring-amber-100 leading-none py-1.5">
                                            {moveStatus.reason}
@@ -1199,7 +1212,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                      )}
                                   </div>
                                </TableCell>
-                               <TableCell className="w-[240px] py-0 px-1.5 text-left">
+                               <TableCell className="w-[300px] py-1 px-2 text-left">
                                   <div className="flex justify-start items-center gap-2">
                                     {(student as any).isUnknown ? (
                                       <div className="flex gap-2">
@@ -1237,20 +1250,20 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                                        </div>
                                     ) : (
                                        <div className="flex items-center gap-2.5">
-                                          <Button variant="ghost" size="sm" onClick={() => toggleExcused(student)} className={`h-6 px-3 text-xs font-bold uppercase transition-colors ${statusInfo.excused ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-slate-600'}`}>
+                                          <Button variant="ghost" size="sm" onClick={() => toggleExcused(student)} className={`h-7 px-3 text-xs font-bold uppercase transition-colors ${statusInfo.excused ? 'bg-blue-600 text-white' : 'text-slate-300 hover:text-slate-600'}`}>
                                              {statusInfo.excused ? 'EXC' : 'PASS'}
                                           </Button>
-                                          <Button variant="ghost" size="sm" onClick={() => toggleNoPass(student)} className={`h-6 px-3 text-[10px] tracking-tight font-black uppercase transition-colors ${statusInfo.noPass ? 'bg-red-600 text-white' : 'text-slate-300 hover:text-slate-600'}`}>
+                                          <Button variant="ghost" size="sm" onClick={() => toggleNoPass(student)} className={`h-7 px-3 text-xs tracking-tight font-bold uppercase transition-colors ${statusInfo.noPass ? 'bg-red-600 text-white' : 'text-slate-300 hover:text-slate-600'}`}>
                                              NO PASS
                                           </Button>
-                                          <Button variant="ghost" size="sm" onClick={() => manualMark(student, 'Absent')} className="h-6 w-6 p-0 text-sm text-red-200 hover:text-red-500 hover:bg-red-50 transition-colors uppercase font-black ml-1">X</Button>
-                                          <Button variant="ghost" size="sm" onClick={() => { trackBehavior(student.id, { name: 'Cut Class', points: -2, type: 'Negative' }, 'Student cut class'); manualMark(student, 'Cut'); }} className="h-6 px-2 text-[10px] tracking-tight font-black uppercase text-slate-400 hover:bg-slate-100 transition-colors ml-1">CUT</Button>
-                                          <Button variant="ghost" size="sm" onClick={() => manualMark(student, 'Left Early')} className={`h-6 px-2 text-[10px] tracking-tight font-black uppercase transition-colors ml-1 ${statusInfo.leftEarly ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-300 hover:text-blue-500 hover:bg-blue-50'}`}>LEFT EARLY</Button>
+                                          <Button variant="ghost" size="sm" onClick={() => manualMark(student, 'Absent')} className="h-7 w-7 p-0 text-sm text-red-200 hover:text-red-500 hover:bg-red-50 transition-colors uppercase font-black ml-1">X</Button>
+                                          <Button variant="ghost" size="sm" onClick={() => { trackBehavior(student.id, { name: 'Cut Class', points: -2, type: 'Negative' }, 'Student cut class'); manualMark(student, 'Cut'); }} className="h-7 px-3 text-xs tracking-tight font-black uppercase text-slate-400 hover:bg-slate-100 transition-colors ml-1">CUT</Button>
+                                          <Button variant="ghost" size="sm" onClick={() => manualMark(student, 'Left Early')} className={`h-7 px-3 text-xs tracking-tight font-black uppercase transition-colors ml-1 ${statusInfo.leftEarly ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-300 hover:text-blue-500 hover:bg-blue-50'}`}>LEFT EARLY</Button>
                                        </div>
                                     )}
                                   </div>
                                </TableCell>
-                               <TableCell className="w-[85px] py-0 px-1.5 text-left border-l border-slate-100/50">
+                               <TableCell className="w-[90px] py-1 px-2 text-left border-l border-slate-100/50">
                                    <div className="flex items-center justify-start gap-1">
                                     {statusInfo.status === 'OnTime' && <span className="px-2.5 py-1 rounded-[2px] text-[11px] font-black bg-green-100 text-green-700 border border-green-200 uppercase whitespace-nowrap">ON TIME</span>}
                                     {statusInfo.status === 'Late' && <span className="px-2.5 py-1 rounded-[2px] text-[11px] font-black bg-amber-100 text-amber-700 border border-amber-200 uppercase whitespace-nowrap">LATE</span>}
@@ -1536,6 +1549,8 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
               </div>
            </div>
         )}
+      </div>
+
 
          <Dialog open={!!editingScanId} onOpenChange={(open) => !open && setEditingScanId(null)}>
             <DialogContent className="sm:max-w-sm">

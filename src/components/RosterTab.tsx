@@ -360,9 +360,9 @@ export default function RosterTab() {
         </div>
       </div>
 
-      <div className="flex-1 p-4 min-w-0 overflow-hidden">
-        <div className="bg-white rounded-xl border shadow-sm overflow-x-auto">
-          <Table className="min-w-[800px]">
+      <div className="flex-1 p-4 min-w-0 overflow-y-auto">
+        <div className="bg-white rounded-xl border shadow-sm">
+          <Table>
             <TableHeader className="bg-slate-50">
               <TableRow>
                 <TableHead className="w-24 font-bold cursor-pointer hover:text-indigo-600" onClick={() => toggleSort('id')}>ID / Barcode</TableHead>
@@ -386,13 +386,13 @@ export default function RosterTab() {
               ) : (
                 filtered.map(student => (
                   <TableRow key={student.id} className="hover:bg-slate-50/50">
-                    <TableCell className="font-mono text-xs">{student.id}</TableCell>
+                    <TableCell className="font-mono">{student.id}</TableCell>
                     <TableCell className="font-medium whitespace-normal">{student.lastName}</TableCell>
                     <TableCell className="whitespace-normal">{student.firstName}</TableCell>
                     <TableCell className="text-slate-500">{student.gradebookRank}</TableCell>
-                    <TableCell className="text-xs text-slate-500 whitespace-normal max-w-[200px]">{student.periods?.join(', ') || '-'}</TableCell>
+                    <TableCell className="text-slate-500 whitespace-normal">{student.periods?.join(', ') || '-'}</TableCell>
                     <TableCell className="text-slate-500">{student.homeroom}</TableCell>
-                    <TableCell className="text-slate-500 text-xs">{student.email}</TableCell>
+                    <TableCell className="text-slate-500 break-all">{student.email}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-1">
                         <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-500 hover:text-indigo-600" onClick={() => handleOpenEditModal(student)}>

@@ -347,14 +347,14 @@ export function BehaviorTab({ activePeriodName, activeScheduleId }: { activePeri
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-7rem)] overflow-hidden">
+    <div className="flex flex-col h-full overflow-hidden">
       <div className="flex flex-col xl:flex-row items-start xl:items-center justify-between gap-4 mb-4 shrink-0 bg-white p-3 rounded-xl shadow-sm border border-slate-100 relative z-20">
         <div className="shrink-0">
           <h2 className="text-xl font-black tracking-tight text-slate-800 leading-none">Behavior Tracker</h2>
           <p className="text-sm text-slate-500">Track and manage student behavior</p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 overflow-x-auto pb-1 max-w-full">
+        <div className="flex flex-wrap items-center gap-2 pb-1">
             <Input 
                 type="date"
                 value={selectedDate}
