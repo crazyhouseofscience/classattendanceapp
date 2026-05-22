@@ -10,6 +10,9 @@ import { toast } from 'sonner';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogClose } from './ui/dialog';
 import { Input } from './ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
+import { RefreshCw } from 'lucide-react';
+import { LiveClock } from '../App';
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -24,6 +27,11 @@ interface ScannerTabProps {
   activeScheduleId: string | null;
   activePeriodName: string | null;
   activeSchedule?: Schedule;
+  schedules?: Schedule[];
+  onScheduleChange?: (val: string) => void;
+  onPeriodChange?: (val: string) => void;
+  isAutoSync?: boolean;
+  setIsAutoSync?: (val: boolean) => void;
 }
 
 const DEFAULT_BEHAVIORS = [
@@ -39,7 +47,16 @@ const DEFAULT_BEHAVIORS = [
   { id: 'b10', name: 'Office', points: 0, type: 'Neutral' }
 ];
 
-export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule }: ScannerTabProps) {
+export function ScannerTab({ 
+  activeScheduleId, 
+  activePeriodName, 
+  activeSchedule,
+  schedules,
+  onScheduleChange,
+  onPeriodChange,
+  isAutoSync,
+  setIsAutoSync
+}: ScannerTabProps) {
   const [barcode, setBarcode] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   
@@ -772,9 +789,66 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
       {/* Sidebar Controls Area */}
       <div className="w-full lg:w-48 xl:w-56 shrink-0 bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-4 overflow-y-auto shadow-sm">
          <div>
-            <h2 className="text-xl font-black tracking-tight text-slate-800 leading-none mb-3 pb-3 border-b">
-               {isReady ? activePeriodName : 'Scanner'}
-            </h2>
+            <div className="flex items-center justify-between mb-3 pb-3 border-b">
+               <h2 className="text-xl font-black tracking-tight text-slate-800 leading-none">
+                  {isReady ? activePeriodName : 'Scanner'}
+               </h2>
+               <LiveClock />
+            </div>
+            
+            {schedules && onScheduleChange && (
+               <div className="flex flex-col gap-3 py-2 border-b mb-3">
+                  <div className={`flex flex-col gap-1.5 transition-opacity ${isAutoSync ? 'opacity-70' : ''}`}>
+                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Schedule:</span>
+                     <Select value={activeScheduleId || ''} onValueChange={onScheduleChange}>
+                        <SelectTrigger className="w-full h-8 text-xs font-bold border-slate-200 bg-white shadow-sm">
+                           <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                           {schedules.map(s => (
+                              <SelectItem key={s.id} value={s.id} className="text-xs font-bold">{s.name || 'Unnamed'}</SelectItem>
+                           ))}
+                        </SelectContent>
+                     </Select>
+                  </div>
+
+                  {activeSchedule && onPeriodChange && (
+                     <div className={`flex flex-col gap-1.5 transition-opacity ${isAutoSync ? 'opacity-70' : ''}`}>
+                        <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Period:</span>
+                        <Select value={activePeriodName || 'all'} onValueChange={onPeriodChange}>
+                           <SelectTrigger className="w-full h-8 text-xs font-bold border-slate-200 bg-white shadow-sm">
+                              <SelectValue placeholder="Select..." />
+                           </SelectTrigger>
+                           <SelectContent>
+                              <SelectItem value="all" className="text-xs font-bold">Open Scan</SelectItem>
+                              {activeSchedule?.periods.map(p => (
+                                 <SelectItem key={p.name} value={p.name} className="text-xs font-bold">{p.name}</SelectItem>
+                              ))}
+                           </SelectContent>
+                        </Select>
+                     </div>
+                  )}
+                  
+                  {isAutoSync !== undefined && setIsAutoSync && (
+                     <div className="flex items-center justify-between mt-1">
+                        <Label className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">Auto-Sync</Label>
+                        {!isAutoSync ? (
+                           <button 
+                              onClick={() => setIsAutoSync(true)} 
+                              className="text-[10px] bg-indigo-100 text-indigo-700 font-bold px-2 py-0.5 rounded-full flex items-center gap-1 hover:bg-indigo-200 transition-colors"
+                           >
+                              <RefreshCw className="w-3 h-3 animate-spin duration-[3000ms]" /> Resume
+                           </button>
+                        ) : (
+                           <span className="text-[10px] text-emerald-600 font-bold flex items-center gap-1">
+                              <CheckCircle className="w-3 h-3" /> Active
+                           </span>
+                        )}
+                     </div>
+                  )}
+               </div>
+            )}
+            
             <div className="flex flex-col gap-1.5 mb-3">
                <Label className="text-[9px] font-black text-slate-400 uppercase leading-none">Date</Label>
                <Input 
