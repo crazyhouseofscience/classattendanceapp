@@ -770,7 +770,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
   return (
     <div className="flex flex-col lg:flex-row h-full relative gap-4">
       {/* Sidebar Controls Area */}
-      <div className="w-full lg:w-48 xl:w-56 order-first lg:order-last shrink-0 bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-4 overflow-y-auto shadow-sm">
+      <div className="w-full lg:w-48 xl:w-56 shrink-0 bg-white border border-slate-200 rounded-xl p-4 flex flex-col gap-4 overflow-y-auto shadow-sm">
          <div>
             <h2 className="text-xl font-black tracking-tight text-slate-800 leading-none mb-3 pb-3 border-b">
                {isReady ? activePeriodName : 'Scanner'}
@@ -845,7 +845,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
            </p>
          )}
 
-         <div className="flex flex-col gap-2 pt-4 border-t mt-auto text-sm">
+         <div className="flex flex-col gap-2 pt-4 border-t mt-4 text-sm">
             <div className="flex items-center justify-between bg-slate-50 px-3 py-2 rounded-md border shadow-sm">
                <Label className="text-[9px] font-black text-slate-400 uppercase leading-none mt-0.5">Alerts</Label>
                <Button 

@@ -332,7 +332,7 @@ export default function App() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-2 w-full overflow-hidden min-w-0 flex-1 flex flex-col">
-        <Tabs defaultValue="scanner" orientation="vertical" className="flex flex-col md:flex-row h-full min-h-0 gap-4 md:gap-6">
+        <Tabs defaultValue="scanner" orientation="vertical" className="flex flex-col md:flex-row-reverse h-full min-h-0 gap-4 md:gap-6">
           <TabsList className="bg-slate-50 border p-1.5 h-fit w-full md:w-40 flex-row md:flex-col justify-start items-stretch shrink-0 mt-0">
             <TabsTrigger value="scanner" className="md:h-9 justify-start px-3 text-xs font-black uppercase transition-all shadow-none">Scanner</TabsTrigger>
             <TabsTrigger value="students" className="md:h-9 justify-start px-3 text-xs font-black uppercase transition-all shadow-none">Students</TabsTrigger>
