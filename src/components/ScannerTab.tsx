@@ -1149,7 +1149,7 @@ export function ScannerTab({ activeScheduleId, activePeriodName, activeSchedule 
                 <h3 className="text-xs font-black text-slate-500 uppercase tracking-widest">Attendance Roster</h3>
                 <span className="text-xs text-slate-400 font-bold">{students.length} Students</span>
              </div>
-             <div className="flex-1 overflow-y-auto overflow-x-hidden min-w-0">
+             <div className="flex-1 overflow-auto min-w-0">
                <div className="flex justify-end p-2 gap-2 shrink-0">
                 <Input 
                     type="time"
