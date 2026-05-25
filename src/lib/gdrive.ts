@@ -1,65 +1,55 @@
 // gdrive.ts
 import { getDB } from './db';
-import { initializeApp } from 'firebase/app';
-import { getAuth, signInWithPopup, GoogleAuthProvider, onAuthStateChanged, User } from 'firebase/auth';
-import firebaseConfig from '../../firebase-applet-config.json';
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const provider = new GoogleAuthProvider();
-provider.addScope('https://www.googleapis.com/auth/drive.file');
+// Use GIS for Google Drive API
+const CLIENT_ID = (import.meta as any).env.VITE_CLIENT_ID || '293411564104-sbjgq7el71u13vhpj38irfqle0gbn86v.apps.googleusercontent.com';
+const SCOPES = 'https://www.googleapis.com/auth/drive.file';
 
-let isSigningIn = false;
-let cachedAccessToken: string | null = null;
-let currentUser: User | null = null;
-
-export const initGoogleIdentity = (
-  onAuthSuccess?: (user: User, token: string) => void,
-  onAuthFailure?: () => void
-) => {
-  return onAuthStateChanged(auth, async (user: User | null) => {
-    currentUser = user;
-    if (user) {
-      if (cachedAccessToken) {
-        if (onAuthSuccess) onAuthSuccess(user, cachedAccessToken);
-      } else if (!isSigningIn) {
-        cachedAccessToken = null;
-        if (onAuthFailure) onAuthFailure();
-      }
-    } else {
-      cachedAccessToken = null;
-      if (onAuthFailure) onAuthFailure();
-    }
-  });
-};
-
-export const googleSignIn = async (): Promise<{ user: User; accessToken: string } | null> => {
-  try {
-    isSigningIn = true;
-    const result = await signInWithPopup(auth, provider);
-    const credential = GoogleAuthProvider.credentialFromResult(result);
-    if (!credential?.accessToken) {
-      throw new Error('Failed to get access token from Firebase Auth');
-    }
-
-    cachedAccessToken = credential.accessToken;
-    currentUser = result.user;
-    return { user: result.user, accessToken: cachedAccessToken };
-  } catch (error: any) {
-    console.error('Sign in error:', error);
-    throw error;
-  } finally {
-    isSigningIn = false;
+declare global {
+  interface Window {
+    google: any;
   }
-};
+}
+declare const google: any;
+
+let tokenClient: any;
+let accessToken: string | null = null;
+
+export function initGoogleIdentity() {
+  if (!CLIENT_ID) {
+    console.warn('VITE_CLIENT_ID not found. Google Drive integration will not work.');
+    return;
+  }
+  
+  if (window.google && window.google.accounts) {
+    tokenClient = google.accounts.oauth2.initTokenClient({
+      client_id: CLIENT_ID,
+      scope: SCOPES,
+      callback: (response: any) => {
+        if (response.access_token) {
+          accessToken = response.access_token;
+          // Trigger the waiting promise
+          if (resolveToken) resolveToken(response.access_token);
+        } else {
+          if (rejectToken) rejectToken(new Error('Failed to authenticate with Google Drive'));
+        }
+      },
+    });
+  }
+}
+
+let resolveToken: ((value: string) => void) | null = null;
+let rejectToken: ((reason?: any) => void) | null = null;
 
 export async function getAccessToken(): Promise<string> {
-  if (cachedAccessToken) return cachedAccessToken;
-  
-  // If not cached, attempt to sign in or get token
-  const result = await googleSignIn();
-  if (result) return result.accessToken;
-  throw new Error('Authentication failed');
+  if (accessToken) return accessToken;
+  if (!tokenClient) throw new Error('Google Identity Services not initialized. Missing VITE_CLIENT_ID?');
+
+  return new Promise((resolve, reject) => {
+    resolveToken = resolve;
+    rejectToken = reject;
+    tokenClient.requestAccessToken();
+  });
 }
 
 export async function backupToDrive(isAuto = false) {
@@ -129,8 +119,8 @@ let backupTimeout: any = null;
 
 export function triggerAutoBackup(delayMs = 5000) {
   // Check if we have a token or at least attempt to get one silently?
-  // We'll only attempt if cachedAccessToken is already set to avoid annoying popups every 5 seconds.
-  if (!cachedAccessToken) return;
+  // We'll only attempt if accessToken is already set to avoid annoying popups every 5 seconds.
+  if (!accessToken) return;
 
   if (backupTimeout) clearTimeout(backupTimeout);
   backupTimeout = setTimeout(async () => {
