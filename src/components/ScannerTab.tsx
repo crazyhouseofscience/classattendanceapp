@@ -167,10 +167,68 @@ export function ScannerTab({
     setManualEndTimeInternal(endSetting?.value || null);
   }
 
+  const recalculateTodayScans = async (newGrace: number) => {
+    const db = await getDB();
+    const today = viewDate;
+    const tx = db.transaction('scans', 'readwrite');
+    const index = tx.store.index('by-date');
+    const todayScans = await index.getAll(today);
+
+    const allSettings = await db.getAll('settings');
+    const getOverrideStart = (pid: string, scheduleId: string) => {
+       const key = `override_${today}_${scheduleId}_${pid}`;
+       return allSettings.find(s => s.key === key)?.value;
+    };
+
+    const parseTime = (timeStr: string, pName: string) => {
+         let [h, m] = timeStr.split(':');
+         let hours = parseInt(h, 10);
+         let minutes = parseInt(m, 10);
+         const upper = timeStr.toUpperCase();
+         if (upper.includes('PM') && hours < 12) hours += 12;
+         if (upper.includes('AM') && hours === 12) hours = 0;
+         if (!upper.includes('AM') && !upper.includes('PM') && hours < 12 && hours > 0) {
+             if (pName.match(/Period\s*[6-9]/i)) hours += 12;
+         }
+         return hours * 60 + minutes;
+    };
+
+    for (const scan of todayScans) {
+       if (!scan.movementType || scan.movementType === 'Attendance') {
+           if (scan.id.startsWith('manual_')) continue;
+           
+           const sched = schedules.find(s => s.id === scan.scheduleId);
+           const pConfig = sched?.periods.find(p => p.name === scan.periodName);
+           const mStart = getOverrideStart(scan.periodName, scan.scheduleId);
+           const effStart = mStart || pConfig?.startTime;
+           
+           if (effStart) {
+               const baseMins = parseTime(effStart, scan.periodName);
+               const cutoff = baseMins + newGrace;
+               const scDate = new Date(scan.timestamp);
+               const scMins = scDate.getHours() * 60 + scDate.getMinutes();
+               
+               const shouldBeLate = scMins > cutoff;
+               const isCurrentlyLate = scan.manualStatus === 'Late';
+               
+               if (shouldBeLate && !isCurrentlyLate) {
+                   scan.manualStatus = 'Late';
+                   await db.put('scans', scan);
+               } else if (!shouldBeLate && isCurrentlyLate) {
+                   delete scan.manualStatus;
+                   await db.put('scans', scan);
+               }
+           }
+       }
+    }
+  };
+
   const setGracePeriod = async (val: number) => {
     const db = await getDB();
     await db.put('settings', { key: 'grace_period', value: val });
     setGracePeriodState(val);
+    await recalculateTodayScans(val);
+    loadData();
   };
 
   useEffect(() => {
@@ -261,6 +319,8 @@ export function ScannerTab({
     if (time) await db.put('settings', { key, value: time });
     else await db.delete('settings', key);
     setManualStartTimeInternal(time);
+    await recalculateTodayScans(gracePeriod);
+    loadData();
   };
 
   const setManualEndTime = async (time: string | null) => {
