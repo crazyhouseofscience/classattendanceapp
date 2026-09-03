@@ -16,6 +16,7 @@ import { initDefaultData, getDB, Schedule } from './lib/db';
 import { backupToDrive, initGoogleIdentity } from './lib/gdrive';
 import { Toaster, toast } from 'sonner';
 import { CloudUpload, WifiOff, RefreshCw, Clock, Download, ShieldCheck, Upload } from 'lucide-react';
+import { Analytics } from '@vercel/analytics/react';
 
 export function LiveClock() {
   const [time, setTime] = useState(new Date());
@@ -364,6 +365,7 @@ export default function App() {
       </footer>
 
       <Toaster position="top-center" richColors />
+      <Analytics />
     </div>
   );
 }
